@@ -26,9 +26,10 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [ ] A1. Circuit/Metro 도입 전략서 확정 및 의존성 스니펫 준비
 - [ ] A2. 코드 스타일/린트/테스트 툴링 확정(Spotless/Detekt/JUnit/Compose test)
 - [ ] A3. 베이스 네비게이션 구성(Circuit `Navigator`/`BackStack`)
+- [~] A4. 매니페스트 런처 액티비티/Compose 스켈레톤 추가(초안)
 
 ### B. 도메인/데이터
-- [ ] B1. 엔티티 정의: `VideoClip`, `Timeline`, `Overlay(Sticker, Subtitle, Music)`
+- [x] B1. 엔티티 정의: `VideoClip`, `Timeline`, `Overlay(Sticker, Subtitle, Music)`
 - [ ] B2. 로컬 미디어 소스 인터페이스(`MediaRepository`)와 Fake 구현
 - [ ] B3. 편집 모델 시리얼라이즈/디시리얼라이즈(로컬 저장)
 

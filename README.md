@@ -31,17 +31,28 @@ dependencies {
   implementation("com.slack.circuit:circuit-runtime-presenter:<version>")
   implementation("com.slack.circuit:circuit-runtime-ui:<version>")
   implementation("com.slack.circuit:circuit-backstack:<version>")
-  // 선택: overlay/sharing 등 필요 시 추가
-  // implementation("com.slack.circuit:circuit-overlay:<version>")
-
-  // Metro: 프로젝트 정책에 따라 적용(문서화 우선)
-  // implementation("dev.zacsweers.metro:metro-core:<version>")
 }
 ```
 
 ## 개발 규칙
 - `.cursor/rules/method.mdc`에 상세 규칙 명시(TDD, Compose, Coroutines, Circuit, Git 등)
 - 모든 PR은 테스트 포함, 작은 단위로 머지
+
+## 테스트 컨벤션
+- **클래스명**: `<SUT명>Test` (예: `TimelineTest`)
+- **함수명 패턴**: `given_<상태>_when_<행위>_then_<결과>()`, `should_<행위>_when_<상태>()`, 또는 백틱 자연어(`` `should reject negative time` ``)
+- **구조**: Arrange / Act / Assert 3단계
+- **패키지**: 프로덕션 패키지 경로 미러링
+- **UI 테스트**: `ui_<보이는현상>_when_<상태>()`
+
+## 코드 스타일/포맷팅
+- Spotless + ktlint 적용(4칸 들여쓰기). `.editorconfig` 참조
+- 명령: `./gradlew spotlessApply`
+
+## 커밋 전 체크리스트
+- `Plan.md`의 TODO 상태 갱신(진행/완료)
+- `README.md` 변경 필요 시 반영
+- 포맷/테스트 통과: `./gradlew spotlessApply :app:testDebugUnitTest`
 
 ## 문서 동기화 워크플로
 - 코드 변경 시 다음을 함께 갱신합니다.
@@ -56,7 +67,6 @@ dependencies {
 
 ## 품질 게이트
 - 최소: `:app:testDebugUnitTest` 통과
-- 코드 스타일/린트: 추후 도입(Spotless/Detekt)
 
 ## Progress
 - 2025-09-12: 초기 문서화(README, Plan, Cursor Rules) 완료. 규칙 Always/Auto/Requested 구분 반영.

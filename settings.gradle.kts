@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "v-editor"
 include(":app")
- 

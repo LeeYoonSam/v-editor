@@ -6,7 +6,14 @@ globs:
 
 - Slack Circuit의 Screen/Presenter/Ui 분리를 따른다(UDF/MVI 스타일).
 - Compose UI는 순수하게 유지하고 상태/이벤트만 주입한다.
+- Composable 함수명은 PascalCase(대문자 시작)로 작성한다.
 - 도메인은 UseCase 중심, 데이터는 Repository로 추상화한다.
 - 상태/모델은 불변 데이터 클래스를 사용한다.
 - 모든 변경은 작은 단위와 TDD(실패→성공→리팩토링)로 진행한다.
 - 코루틴 디스패처 정책: CPU=Default, I/O=IO, UI=Main.immediate.
+
+Compose 구성 원칙
+- Ui 단위: "한 책임" 기준으로 Composable 분리(예: 리스트/아이템/툴바/시트).
+- 재사용: 상태 없는 순수 Composable 우선, 상태는 상위 Presenter/State에서 주입.
+- 확장: Slot API/Hoist event로 확장성 확보, 긴 함수는 섹션용 private Composable로 분리.
+- 미리보기: 각 Composable에 대표 상태 미리보기를 제공(가능 시).

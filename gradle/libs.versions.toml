@@ -1,6 +1,6 @@
 [versions]
 agp = "8.13.0"
-kotlin = "2.0.21"
+kotlin = "2.2.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
@@ -12,6 +12,7 @@ activityCompose = "1.9.2"
 lifecycle = "2.8.4"
 coroutines = "1.9.0"
 circuit = "0.30.0"
+spotless = "6.25.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,6 +40,7 @@ circuit-runtime = { group = "com.slack.circuit", name = "circuit-runtime", versi
 circuit-runtime-presenter = { group = "com.slack.circuit", name = "circuit-runtime-presenter", version.ref = "circuit" }
 circuit-runtime-ui = { group = "com.slack.circuit", name = "circuit-runtime-ui", version.ref = "circuit" }
 circuit-backstack = { group = "com.slack.circuit", name = "circuit-backstack", version.ref = "circuit" }
+circuit-runtime-screen = { group = "com.slack.circuit", name = "circuit-runtime-screen", version.ref = "circuit" }
 
 # Compose test/debug
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
@@ -49,4 +51,5 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 
