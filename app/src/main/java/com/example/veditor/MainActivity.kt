@@ -4,15 +4,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.example.veditor.core.domain.GetDeviceVideosUseCase
+import com.example.veditor.core.media.DeviceVideo
+import com.example.veditor.core.media.FakeMediaRepository
+import com.example.veditor.core.model.TimeMs
+import com.example.veditor.feature.home.HomePresenter
+import com.example.veditor.feature.home.HomeState
+import com.example.veditor.feature.home.HomeUi
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +24,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    HomeUi()
+                    App()
                 }
             }
         }
@@ -29,10 +32,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun HomeUi() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Button(onClick = { /* TODO: navigate to editor when available */ }) {
-            Text(text = "새 비디오 만들기")
-        }
-    }
+private fun App() {
+    val repo = FakeMediaRepository(
+        listOf(
+            DeviceVideo("content://1", "샘플1", TimeMs(1_000)),
+            DeviceVideo("content://2", "샘플2", TimeMs(2_000)),
+        ),
+    )
+    val presenter = HomePresenter(GetDeviceVideosUseCase(repo))
+    val state: HomeState by presenter.state.collectAsState()
+    HomeUi(state = state, onCreateNewVideo = { /* TODO */ })
 }

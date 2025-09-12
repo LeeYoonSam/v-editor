@@ -42,7 +42,7 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [ ] C6. 렌더링(내보내기) 파이프라인 설계(MVP: 단순 병합)
 
 ### D. 화면(UI)
-- [ ] D1. 홈 스크린(Screen/Presenter/Ui) – 생성 목록/새 편집 버튼
+- [x] D1. 홈 스크린(Screen/Presenter/Ui) – 생성 목록/새 편집 버튼
 - [ ] D2. 에디터 스크린(Screen/Presenter/Ui) – 타임라인/오버레이 팔레트/프리뷰
 - [ ] D3. 오버레이 선택/속성 편집 시트(Overlay/Sheet)
 
