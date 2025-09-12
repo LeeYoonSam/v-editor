@@ -40,8 +40,15 @@ dependencies {
 ```
 
 ## 개발 규칙
-- `method.mdc`에 상세 규칙 명시(TDD, Compose, Coroutines, Circuit, Git 등)
+- `.cursor/rules/method.mdc`에 상세 규칙 명시(TDD, Compose, Coroutines, Circuit, Git 등)
 - 모든 PR은 테스트 포함, 작은 단위로 머지
+
+## 문서 동기화 워크플로
+- 코드 변경 시 다음을 함께 갱신합니다.
+  - `Plan.md`: TODO 상태, Progress, Changelog
+  - `README.md`: 아키텍처/스택/설치/레퍼런스 변경점
+  - `.cursor/rules`: 관련 규칙 보완(자동첨부/전역/요청형)
+- 규칙 참조: `.cursor/rules/docs-sync.mdc`, `.cursor/rules/progress-tracking.mdc`
 
 ## 빌드/실행
 - Android Studio 최신 버전(조건: JDK 17+)
@@ -50,6 +57,9 @@ dependencies {
 ## 품질 게이트
 - 최소: `:app:testDebugUnitTest` 통과
 - 코드 스타일/린트: 추후 도입(Spotless/Detekt)
+
+## Progress
+- 2025-09-12: 초기 문서화(README, Plan, Cursor Rules) 완료. 규칙 Always/Auto/Requested 구분 반영.
 
 ## 레퍼런스
 - Circuit — `https://github.com/slackhq/circuit`

@@ -1,0 +1,10 @@
+---
+description: 도구 사용 가이드(Agent Requested)
+alwaysApply: false
+globs:
+---
+
+- 코드 탐색은 의미 검색 우선, 정확 검색은 grep 사용.
+- 긴 명령/대화형 명령은 비대화 플래그 사용 및 pager 방지.
+- 파일 편집 후 lint를 확인하고 즉시 수정한다.
+- 병렬 가능한 읽기/검색 작업은 병렬로 실행한다.

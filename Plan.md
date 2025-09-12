@@ -69,3 +69,9 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - M1: 홈 스크린 TDD 완료(리스트/네비)
 - M2: 에디터 타임라인 최소기능(TDD) + 오버레이 추가
 - M3: 내보내기 MVP + 성능 기본 최적화
+
+## 8. Progress
+- 2025-09-12: 초기 문서화(README, Plan, Cursor Rules) 완료. 규칙 Always/Auto/Requested 구분 반영.
+
+## 9. Changelog
+- 2025-09-12: `.cursor/rules` 추가(architecture, circuit, testing, gradle-deps, media, method, docs-sync, progress-tracking).

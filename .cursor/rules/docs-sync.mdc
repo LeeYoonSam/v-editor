@@ -1,0 +1,13 @@
+---
+description: 문서 동기화 가이드(자동 첨부)
+alwaysApply: false
+globs:
+  - "**/README.md"
+  - "**/Plan.md"
+---
+
+- 기능 구현/리팩토링 시 다음을 즉시 반영한다.
+  - README.md: 아키텍처/스택/설치/레퍼런스 변경
+  - Plan.md: TODO 상태, Progress, Changelog 업데이트
+- 규칙: 작은 단위 변경마다 최소 1줄 이상의 Changelog를 남긴다.
+- 가능하면 같은 PR에서 코드와 문서를 함께 수정한다.

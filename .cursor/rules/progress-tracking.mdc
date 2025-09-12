@@ -1,0 +1,10 @@
+---
+description: 진행 상황 추적 규칙(Agent Requested)
+alwaysApply: false
+globs:
+---
+
+- 모든 커밋/PR에 요약(what/why)와 관련 TODO 항목 ID를 명시한다.
+- 새로운 작업이 시작되면 Plan.md의 TODO를 갱신하고 상태를 이전/진행/완료로 이동한다.
+- 완료 후 README.md의 기능 리스트 또는 스택 변경을 반영한다.
+- 릴리즈/마일스톤 종료 시 Changelog를 요약하여 상단에 최신 항목으로 추가한다.

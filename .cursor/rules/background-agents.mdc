@@ -1,0 +1,9 @@
+---
+description: Background Agents 활용(Agent Requested)
+alwaysApply: false
+globs:
+---
+
+- 장기 작업(빌드/테스트/문서 동기화)을 백그라운드 에이전트로 실행한다.
+- 완료/에러 시 Plan.md의 Progress/Changelog를 즉시 갱신한다.
+- 에이전트는 상호 간섭을 피하기 위해 하나의 작업 단위만 담당한다.

@@ -1,0 +1,10 @@
+# Cursor ignore patterns
+.git/
+.gradle/
+.idea/
+build/
+app/build/
+local.properties
+.DS_Store
+*.keystore
+*.jks
