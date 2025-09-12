@@ -22,6 +22,7 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 ## 3. 작업 보드(TODO)
 
 ### A. 프로젝트/도구
+- [x] A0. 버전 카탈로그 구성 및 Compose/Circuit 의존성 추가
 - [ ] A1. Circuit/Metro 도입 전략서 확정 및 의존성 스니펫 준비
 - [ ] A2. 코드 스타일/린트/테스트 툴링 확정(Spotless/Detekt/JUnit/Compose test)
 - [ ] A3. 베이스 네비게이션 구성(Circuit `Navigator`/`BackStack`)
@@ -69,9 +70,3 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - M1: 홈 스크린 TDD 완료(리스트/네비)
 - M2: 에디터 타임라인 최소기능(TDD) + 오버레이 추가
 - M3: 내보내기 MVP + 성능 기본 최적화
-
-## 8. Progress
-- 2025-09-12: 초기 문서화(README, Plan, Cursor Rules) 완료. 규칙 Always/Auto/Requested 구분 반영.
-
-## 9. Changelog
-- 2025-09-12: `.cursor/rules` 추가(architecture, circuit, testing, gradle-deps, media, method, docs-sync, progress-tracking).
