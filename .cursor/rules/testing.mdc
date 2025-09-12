@@ -12,6 +12,8 @@ globs:
 
 네이밍/구조 컨벤션
 - 테스트 클래스명: `<SUT명>Test` (예: `TimelineTest`, `TimeTest`)
+- UseCase 클래스명: 반드시 `*UseCase` 접미사를 붙인다. (예: `BuildTimelineFromSelectionUseCase`)
+- UseCase 테스트 클래스명: SUT와 동일 접두사 + `Test` (예: `BuildTimelineFromSelectionUseCaseTest`)
 - 테스트 함수명 패턴(택1, 혼용 가능)
   - `given_<상태>_when_<행위>_then_<결과>()`
   - `should_<행위>_when_<상태>()`
