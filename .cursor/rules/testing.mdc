@@ -1,0 +1,11 @@
+---
+description: 테스트 표준(TDD/단위/통합/UI)
+alwaysApply: false
+globs:
+---
+
+- 모든 작업은 실패 테스트 먼저 작성 후 구현한다.
+- Presenter/UseCase는 단위 테스트를 우선하며, 경계/에러 케이스를 포함한다.
+- Compose UI 테스트는 Semantics 매칭을 사용하고 임의 대기 사용 금지.
+- 미디어 I/O는 통합 테스트에서만 실제 접근을 허용하고 단위 테스트는 Fake 사용.
+- 최소 커버리지 목표: 핵심 도메인/프레젠테이션 80% 이상.

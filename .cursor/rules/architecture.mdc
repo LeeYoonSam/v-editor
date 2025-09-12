@@ -1,0 +1,12 @@
+---
+description: 프로젝트 전역 아키텍처/스타일 원칙
+alwaysApply: true
+globs:
+---
+
+- Slack Circuit의 Screen/Presenter/Ui 분리를 따른다(UDF/MVI 스타일).
+- Compose UI는 순수하게 유지하고 상태/이벤트만 주입한다.
+- 도메인은 UseCase 중심, 데이터는 Repository로 추상화한다.
+- 상태/모델은 불변 데이터 클래스를 사용한다.
+- 모든 변경은 작은 단위와 TDD(실패→성공→리팩토링)로 진행한다.
+- 코루틴 디스패처 정책: CPU=Default, I/O=IO, UI=Main.immediate.

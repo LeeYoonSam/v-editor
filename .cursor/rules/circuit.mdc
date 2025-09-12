@@ -1,0 +1,13 @@
+---
+description: Circuit Screen/Presenter/Ui 구현 규칙(자동 첨부)
+alwaysApply: false
+globs:
+  - "**/*Screen.kt"
+  - "**/*Presenter.kt"
+  - "**/*Ui.kt"
+---
+
+- Screen은 네비게이션 경계이며 parcelable/serializable한 안전한 파라미터만 노출한다.
+- Presenter는 순수 상태 기계다: Intent/Event → Reduce → State. 사이드이펙트는 UseCase로 위임.
+- Ui는 비즈니스 로직 없이 상태를 그리며 이벤트만 발행한다.
+- Backstack 변경은 Presenter에서만 수행하고 Navigator를 주입받아 호출한다.

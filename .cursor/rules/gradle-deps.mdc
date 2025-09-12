@@ -1,0 +1,18 @@
+---
+description: Gradle 의존성/버전 카탈로그 가이드(Agent Requested)
+alwaysApply: false
+globs:
+---
+
+- 버전은 `gradle/libs.versions.toml`로 단일화한다.
+- Circuit 의존성 예시:
+  @app/build.gradle.kts
+  ```kotlin
+  dependencies {
+    implementation("com.slack.circuit:circuit-runtime:<version>")
+    implementation("com.slack.circuit:circuit-runtime-presenter:<version>")
+    implementation("com.slack.circuit:circuit-runtime-ui:<version>")
+    implementation("com.slack.circuit:circuit-backstack:<version>")
+  }
+  ```
+- Metro는 도입 범위 확정 전까지 문서화/POC에만 사용한다.
