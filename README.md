@@ -10,7 +10,7 @@
 ## 아키텍처 개요
 - Presentation: Circuit `Screen`(네비), `Presenter`(상태 기계), `Ui`(순수 Composable)
 - Domain: UseCase 중심, 순수 Kotlin
-- Data: 로컬 파일/MediaStore 접근, 편집 메타데이터 저장
+- Data: 로컬 파일/MediaStore 접근, 편집 메타데이터 저장, `MediaRepository` 추상화로 디바이스 미디어 접근
 
 ## 화면
 - 홈: 생성된 비디오 목록, 새 비디오 생성
