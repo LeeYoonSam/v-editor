@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.example.veditor.core.domain.BuildTimelineFromSelectionUseCase
@@ -24,6 +25,11 @@ import com.example.veditor.feature.home.HomeState
 import com.example.veditor.feature.home.HomeUi
 import com.example.veditor.feature.importmedia.ImportPresenter
 import com.example.veditor.feature.importmedia.ImportUi
+import com.example.veditor.feature.navigation.EditorScreen
+import com.example.veditor.feature.navigation.HomeScreen
+import com.example.veditor.feature.navigation.ImportScreen
+import com.slack.circuit.backstack.rememberSaveableBackStack
+import com.slack.circuit.foundation.rememberCircuitNavigator
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,8 +47,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun App() {
-    var showImport by rememberSaveable { mutableStateOf(false) }
-    var showEditor by rememberSaveable { mutableStateOf(false) }
 
     val repo = FakeMediaRepository(
         listOf(
@@ -52,30 +56,28 @@ private fun App() {
         ),
     )
 
-    if (showImport) {
-        val presenter = ImportPresenter(GetDeviceVideosUseCase(repo))
-        ImportUi(
-            presenter = presenter,
-            onConfirm = { selected ->
-                // 선택 결과를 토대로 Editor로 전환
-                val build = BuildTimelineFromSelectionUseCase(defaultClipDurationMs = 1_000)
-                val timeline = build(selected)
-                // 임시: EditorPresenter 내부 초기화가 필요하지만 현재는 빈 상태 → 전환만 처리
-                showImport = false
-                showEditor = true
-            },
-            onClose = { showImport = false },
-        )
-        return
-    }
+    val backStack = rememberSaveableBackStack(root = HomeScreen)
+    val navigator = rememberCircuitNavigator(backStack)
 
-    if (showEditor) {
-        val presenter = EditorPresenter()
-        EditorUi(presenter = presenter)
-        return
+    when (val screen = backStack.topRecord?.screen) {
+        is HomeScreen -> {
+            val presenter = HomePresenter(GetDeviceVideosUseCase(repo))
+            val state: HomeState by presenter.state.collectAsState()
+            HomeUi(state = state, onCreateNewVideo = { navigator.goTo(ImportScreen) })
+        }
+        is ImportScreen -> {
+            val presenter = ImportPresenter(GetDeviceVideosUseCase(repo))
+            ImportUi(
+                presenter = presenter,
+                onConfirm = { selected -> navigator.goTo(EditorScreen(selectedUris = ArrayList(selected))) },
+                onClose = { navigator.pop() },
+            )
+        }
+        is EditorScreen -> {
+            val timeline = BuildTimelineFromSelectionUseCase(defaultClipDurationMs = 1_000)(screen.selectedUris)
+            val presenter = EditorPresenter(initialTimeline = timeline)
+            EditorUi(presenter = presenter)
+        }
+        else -> {}
     }
-
-    val presenter = HomePresenter(GetDeviceVideosUseCase(repo))
-    val state: HomeState by presenter.state.collectAsState()
-    HomeUi(state = state, onCreateNewVideo = { showImport = true })
 }

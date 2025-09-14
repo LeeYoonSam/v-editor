@@ -1,10 +1,7 @@
 package com.example.veditor.feature.editor
 
 import androidx.lifecycle.ViewModel
-import com.example.veditor.core.model.TimeMs
-import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
-import com.example.veditor.core.model.VideoClip
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,11 +11,13 @@ data class EditorState(
     val isExporting: Boolean = false,
 )
 
-class EditorPresenter : ViewModel() {
+class EditorPresenter(
+    initialTimeline: Timeline? = null,
+) : ViewModel() {
 
     private val _state = MutableStateFlow(
         EditorState(
-            timeline = null,
+            timeline = initialTimeline,
         ),
     )
     val state: StateFlow<EditorState> = _state.asStateFlow()
@@ -29,6 +28,10 @@ class EditorPresenter : ViewModel() {
     fun onAddSubtitleClicked() { /* no-op for skeleton */ }
     fun onAddMusicClicked() { /* no-op for skeleton */ }
     fun onExportClicked() { /* no-op for skeleton */ }
+
+    fun setTimeline(timeline: Timeline) {
+        _state.value = _state.value.copy(timeline = timeline)
+    }
 }
 
 

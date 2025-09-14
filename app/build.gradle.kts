@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -54,6 +55,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
     // Compose UI
@@ -68,6 +70,8 @@ dependencies {
     implementation(libs.circuit.runtime.presenter)
     implementation(libs.circuit.runtime.ui)
     implementation(libs.circuit.backstack)
+    implementation(libs.circuit.runtime.screen)
+    implementation(libs.circuit.foundation)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

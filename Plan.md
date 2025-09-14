@@ -25,7 +25,7 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [x] A0. 버전 카탈로그 구성 및 Compose/Circuit 의존성 추가
 - [ ] A1. Circuit/Metro 도입 전략서 확정 및 의존성 스니펫 준비
 - [ ] A2. 코드 스타일/린트/테스트 툴링 확정(Spotless/Detekt/JUnit/Compose test)
-- [ ] A3. 베이스 네비게이션 구성(Circuit `Navigator`/`BackStack`)
+- [x] A3. 베이스 네비게이션 구성(Circuit `Navigator`/`BackStack`)
 - [~] A4. 매니페스트 런처 액티비티/Compose 스켈레톤 추가(초안)
 - [ ] A5. 미디어 권한 전략(API33+ Photo Picker 우선, 필요 시 READ_MEDIA_VIDEO)
 
@@ -48,7 +48,7 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [x] D1. 홈 스크린(Screen/Presenter/Ui) – 생성 목록/새 편집 버튼
 - [x] D2. 에디터 스크린(Screen/Presenter/Ui) – 타임라인/오버레이 팔레트/프리뷰
 - [x] D2a. 에디터 빈 상태 UX(Import CTA)
-- [ ] D2b. Import→Editor 결과 전달 및 연결
+- [x] D2b. Import→Editor 결과 전달 및 연결
 - [ ] D3. 오버레이 선택/속성 편집 시트(Overlay/Sheet)
 
 ### E. 테스트
