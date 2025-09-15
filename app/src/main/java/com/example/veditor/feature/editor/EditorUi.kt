@@ -1,15 +1,18 @@
 package com.example.veditor.feature.editor
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,10 +21,19 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -29,9 +41,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,23 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Celebration
-import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.vector.ImageVector
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import com.example.veditor.core.model.Overlay
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
@@ -166,14 +166,14 @@ private fun EditorContent(
             is EditorOverlaySheet.Sticker -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
                     val draft = state.overlayDraft as? OverlayDraft.Sticker
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp).testTag("sheet_sticker")) {
                         Text("Sticker settings")
                         StickerAssetGrid(onSelect = { id -> onUpdateSticker(id, null, null, null, null) })
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onCloseSheet) { Text("취소") }
-                            TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                            TextButton(onClick = onCloseSheet, modifier = Modifier.testTag("sheet_btn_cancel")) { Text("취소") }
+                            TextButton(onClick = onConfirmOverlay, modifier = Modifier.testTag("sheet_btn_confirm")) { Text("확인") }
                             if (state.selectedOverlayId != null) {
-                                TextButton(onClick = onDeleteSelectedOverlay) { Text("삭제") }
+                                TextButton(onClick = onDeleteSelectedOverlay, modifier = Modifier.testTag("sheet_btn_delete")) { Text("삭제") }
                             }
                         }
                     }
@@ -182,7 +182,7 @@ private fun EditorContent(
             is EditorOverlaySheet.Subtitle -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
                     val draft = state.overlayDraft as? OverlayDraft.Subtitle
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp).testTag("sheet_subtitle")) {
                         Text("Subtitle settings")
                         TextField(value = draft?.text ?: "", onValueChange = onUpdateSubtitle, label = { Text("Text") })
                         Text("Color")
@@ -197,10 +197,10 @@ private fun EditorContent(
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onCloseSheet) { Text("취소") }
-                            TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                            TextButton(onClick = onCloseSheet, modifier = Modifier.testTag("sheet_btn_cancel")) { Text("취소") }
+                            TextButton(onClick = onConfirmOverlay, modifier = Modifier.testTag("sheet_btn_confirm")) { Text("확인") }
                             if (state.selectedOverlayId != null) {
-                                TextButton(onClick = onDeleteSelectedOverlay) { Text("삭제") }
+                                TextButton(onClick = onDeleteSelectedOverlay, modifier = Modifier.testTag("sheet_btn_delete")) { Text("삭제") }
                             }
                         }
                     }
@@ -209,7 +209,7 @@ private fun EditorContent(
             is EditorOverlaySheet.Music -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
                     val draft = state.overlayDraft as? OverlayDraft.Music
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp).testTag("sheet_music")) {
                         Text("Music settings")
                         Text("Volume: ${draft?.volumePercent ?: 100}")
                         Slider(
@@ -224,10 +224,10 @@ private fun EditorContent(
                             TextButton(onClick = { picker.launch("audio/*") }) { Text("오디오 선택") }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onCloseSheet) { Text("취소") }
-                            TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                            TextButton(onClick = onCloseSheet, modifier = Modifier.testTag("sheet_btn_cancel")) { Text("취소") }
+                            TextButton(onClick = onConfirmOverlay, modifier = Modifier.testTag("sheet_btn_confirm")) { Text("확인") }
                             if (state.selectedOverlayId != null) {
-                                TextButton(onClick = onDeleteSelectedOverlay) { Text("삭제") }
+                                TextButton(onClick = onDeleteSelectedOverlay, modifier = Modifier.testTag("sheet_btn_delete")) { Text("삭제") }
                             }
                         }
                     }
@@ -305,6 +305,7 @@ private fun PreviewArea(
                             .height(48.dp)
                             .width(48.dp)
                             .background(Color.White.copy(alpha = 0.2f))
+                            .testTag("preview_sticker_draft")
                             .pointerInput(boxWidthPx, boxHeightPx, d.x, d.y) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
@@ -326,6 +327,7 @@ private fun PreviewArea(
                         color = Color((d.colorArgb and 0xFFFFFFFF).toInt()),
                         modifier = Modifier
                             .padding(0.dp)
+                            .testTag("preview_subtitle_draft")
                             .pointerInput(boxWidthPx, boxHeightPx, d.x, d.y) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
@@ -398,10 +400,10 @@ private fun OverlayPalette(
             .horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Button(onClick = onAddSticker) { Text("Sticker") }
-        Button(onClick = onAddSubtitle) { Text("Subtitle") }
-        Button(onClick = onAddMusic) { Text("Music") }
-        Button(onClick = onExport) { Text("Export") }
+        Button(onClick = onAddSticker, modifier = Modifier.testTag("btn_add_sticker")) { Text("Sticker") }
+        Button(onClick = onAddSubtitle, modifier = Modifier.testTag("btn_add_subtitle")) { Text("Subtitle") }
+        Button(onClick = onAddMusic, modifier = Modifier.testTag("btn_add_music")) { Text("Music") }
+        Button(onClick = onExport, modifier = Modifier.testTag("btn_export")) { Text("Export") }
     }
 }
 
@@ -467,7 +469,7 @@ private fun OverlayList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Overlays")
-        timeline.overlays.forEach { ov ->
+        timeline.overlays.forEachIndexed { index, ov ->
             val label = when (ov) {
                 is Overlay.Sticker -> "Sticker"
                 is Overlay.Subtitle -> "Subtitle"
@@ -492,7 +494,8 @@ private fun OverlayList(
                     modifier = Modifier
                         .weight(1f)
                         .height(28.dp)
-                        .horizontalScroll(scrollState, enabled = !isRowSelected),
+                        .horizontalScroll(scrollState, enabled = !isRowSelected)
+                        .testTag("overlay_row_${ov.id}"),
                 ) {
                     val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
                     val startPx = (startMs.toFloat() / totalMs) * timelineWidthPx
@@ -534,6 +537,9 @@ private fun OverlayList(
                                     )
                                 } else Modifier
                             )
+                            .testTag("overlay_range_${ov.id}")
+                            .testTag("overlay_range")
+                            .then(if (index == 0) Modifier.testTag("overlay_range_first") else Modifier)
                             .clickable { onClickOverlay(ov.id) },
                     )
                     // Left handle (투명 핫스팟 + 누적 드래그) - 선택 시에만 활성화
@@ -558,7 +564,9 @@ private fun OverlayList(
                                         },
                                     )
                                 } else Modifier
-                            ),
+                            )
+                            .testTag("overlay_handle_start_${ov.id}")
+                            .testTag("overlay_handle_start"),
                     )
                     // Right handle (투명 핫스팟 + 누적 드래그) - 선택 시에만 활성화
                     Box(
@@ -572,7 +580,7 @@ private fun OverlayList(
                                 if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
                                     var accumulated by androidx.compose.runtime.mutableStateOf(0f)
                                     detectDragGestures(
-        								onDragStart = { accumulated = 0f },
+                                        onDragStart = { accumulated = 0f },
                                         onDrag = { change, drag ->
                                             change.consume()
                                             accumulated += drag.x
@@ -582,7 +590,9 @@ private fun OverlayList(
                                         },
                                     )
                                 } else Modifier
-                            ),
+                            )
+                            .testTag("overlay_handle_end_${ov.id}")
+                            .testTag("overlay_handle_end"),
                     )
                 }
             }
