@@ -14,6 +14,7 @@ data class EditorState(
     val isExporting: Boolean = false,
     val overlaySheet: EditorOverlaySheet? = null,
     val overlayDraft: OverlayDraft? = null,
+    val selectedOverlayId: String? = null,
 )
 
 class EditorPresenter(
@@ -31,6 +32,7 @@ class EditorPresenter(
 
     fun onAddStickerClicked() {
         _state.value = _state.value.copy(
+            selectedOverlayId = null,
             overlaySheet = EditorOverlaySheet.Sticker,
             overlayDraft = OverlayDraft.Sticker(
                 assetId = "star",
@@ -45,6 +47,7 @@ class EditorPresenter(
     }
     fun onAddSubtitleClicked() {
         _state.value = _state.value.copy(
+            selectedOverlayId = null,
             overlaySheet = EditorOverlaySheet.Subtitle,
             overlayDraft = OverlayDraft.Subtitle(
                 text = "",
@@ -59,6 +62,7 @@ class EditorPresenter(
     }
     fun onAddMusicClicked() {
         _state.value = _state.value.copy(
+            selectedOverlayId = null,
             overlaySheet = EditorOverlaySheet.Music,
             overlayDraft = OverlayDraft.Music(
                 volumePercent = 100,
@@ -162,6 +166,7 @@ class EditorPresenter(
     fun confirmOverlay() {
         val currentTimeline = _state.value.timeline ?: return
         val draft = _state.value.overlayDraft ?: return
+        val selectedId = _state.value.selectedOverlayId
 
         val timelineEnd = currentTimeline.clips.lastOrNull()?.range?.endMs?.value ?: return
         val (start, duration) = when (draft) {
@@ -173,6 +178,49 @@ class EditorPresenter(
         if (end <= start) return
         val placeRange = TimeRange(TimeMs(start), TimeMs(end))
 
+        if (selectedId != null) {
+            // Update existing overlay
+            val idx = currentTimeline.overlays.indexOfFirst { it.id == selectedId }
+            if (idx != -1) {
+                val target = currentTimeline.overlays[idx]
+                val updatedOverlay: Overlay? = when {
+                    target is Overlay.Sticker && draft is OverlayDraft.Sticker -> target.copy(
+                        timeRange = placeRange,
+                        assetId = draft.assetId,
+                        x = draft.x,
+                        y = draft.y,
+                        scale = draft.scale,
+                        rotationDeg = draft.rotationDeg,
+                    )
+                    target is Overlay.Subtitle && draft is OverlayDraft.Subtitle -> target.copy(
+                        timeRange = placeRange,
+                        text = draft.text,
+                        x = draft.x,
+                        y = draft.y,
+                        textSizeSp = draft.textSizeSp,
+                        colorArgb = draft.colorArgb,
+                    )
+                    target is Overlay.Music && draft is OverlayDraft.Music -> target.copy(
+                        timeRange = placeRange,
+                        sourceUri = draft.sourceUri ?: target.sourceUri,
+                        volumePercent = draft.volumePercent,
+                    )
+                    else -> null
+                }
+                if (updatedOverlay != null) {
+                    val newList = currentTimeline.overlays.toMutableList()
+                    newList[idx] = updatedOverlay
+                    _state.value = _state.value.copy(
+                        timeline = currentTimeline.copy(overlays = newList),
+                        overlaySheet = null,
+                        overlayDraft = null,
+                    )
+                    return
+                }
+            }
+        }
+
+        // Add new overlay
         val newOverlay: Overlay = when (draft) {
             is OverlayDraft.Sticker -> Overlay.Sticker(
                 id = generateOverlayId(),
@@ -200,7 +248,56 @@ class EditorPresenter(
             )
         }
         val updated = currentTimeline.copy(overlays = currentTimeline.overlays + newOverlay)
-        _state.value = _state.value.copy(timeline = updated, overlaySheet = null, overlayDraft = null)
+        _state.value = _state.value.copy(timeline = updated, overlaySheet = null, overlayDraft = null, selectedOverlayId = newOverlay.id)
+    }
+
+    fun editOverlay(overlayId: String) {
+        val currentTimeline = _state.value.timeline ?: return
+        val target = currentTimeline.overlays.firstOrNull { it.id == overlayId } ?: return
+        when (target) {
+            is Overlay.Sticker -> {
+                _state.value = _state.value.copy(
+                    selectedOverlayId = overlayId,
+                    overlaySheet = EditorOverlaySheet.Sticker,
+                    overlayDraft = OverlayDraft.Sticker(
+                        assetId = target.assetId,
+                        x = target.x,
+                        y = target.y,
+                        scale = target.scale,
+                        rotationDeg = target.rotationDeg,
+                        startMs = target.timeRange.startMs.value,
+                        durationMs = target.timeRange.endMs.value - target.timeRange.startMs.value,
+                    ),
+                )
+            }
+            is Overlay.Subtitle -> {
+                _state.value = _state.value.copy(
+                    selectedOverlayId = overlayId,
+                    overlaySheet = EditorOverlaySheet.Subtitle,
+                    overlayDraft = OverlayDraft.Subtitle(
+                        text = target.text,
+                        startMs = target.timeRange.startMs.value,
+                        durationMs = target.timeRange.endMs.value - target.timeRange.startMs.value,
+                        x = target.x,
+                        y = target.y,
+                        textSizeSp = target.textSizeSp,
+                        colorArgb = target.colorArgb,
+                    ),
+                )
+            }
+            is Overlay.Music -> {
+                _state.value = _state.value.copy(
+                    selectedOverlayId = overlayId,
+                    overlaySheet = EditorOverlaySheet.Music,
+                    overlayDraft = OverlayDraft.Music(
+                        volumePercent = target.volumePercent,
+                        sourceUri = target.sourceUri,
+                        startMs = target.timeRange.startMs.value,
+                        durationMs = target.timeRange.endMs.value - target.timeRange.startMs.value,
+                    ),
+                )
+            }
+        }
     }
 
     fun updateOverlayTimeById(overlayId: String, startMs: Long? = null, durationMs: Long? = null) {

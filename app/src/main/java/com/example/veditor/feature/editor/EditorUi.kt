@@ -1,6 +1,7 @@
 package com.example.veditor.feature.editor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -91,6 +92,7 @@ fun EditorUi(presenter: EditorPresenter) {
                 durationMs = end?.let { e -> (e - curStart).coerceAtLeast(100L).coerceAtMost(tlEnd) },
             )
         },
+        onEditOverlay = presenter::editOverlay,
     )
 }
 
@@ -114,6 +116,7 @@ private fun EditorContent(
     // subtitle style/position
     onUpdateSubtitleStyle: (textSizeSp: Float?, colorArgb: Long?) -> Unit = { _, _ -> },
     onUpdateSubtitlePosition: (x: Float?, y: Float?) -> Unit = { _, _ -> },
+    onEditOverlay: (overlayId: String) -> Unit = {},
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -150,6 +153,8 @@ private fun EditorContent(
                     timeline = state.timeline,
                     onDragStartHandle = { id, newStart -> onUpdateTimeForOverlay(id, newStart, null) },
                     onDragEndHandle = { id, newEnd -> onUpdateTimeForOverlay(id, null, newEnd) },
+                    selectedOverlayId = state.selectedOverlayId,
+                    onClickOverlay = { id -> onEditOverlay(id) },
                 )
                 
             }
@@ -433,13 +438,15 @@ private fun OverlayList(
     timeline: Timeline?,
     onDragStartHandle: (overlayId: String, newStartMs: Long) -> Unit,
     onDragEndHandle: (overlayId: String, newEndMs: Long) -> Unit,
+    selectedOverlayId: String?,
+    onClickOverlay: (overlayId: String) -> Unit,
 ) {
     if (timeline == null) return
     val totalMs = timeline.clips.last().range.endMs.value
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
-    // Scale: 1s = 100dp → dpPerMs = 0.1f
-    val dpPerMs = 0.1f
+    // Scale: 1s = 300dp → dpPerMs = 0.3f (조작 용이성 향상)
+    val dpPerMs = 0.3f
     val timelineWidthDp = (totalMs * dpPerMs).dp
 
     Column(
@@ -463,75 +470,108 @@ private fun OverlayList(
                         .height(28.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = Color.Gray)
+                    Text(label, color = Color(0xFF9E9E9E))
                 }
                 // Scrollable timeline area per overlay
+                val isRowSelected = selectedOverlayId == ov.id
                 val startMs = ov.timeRange.startMs.value
                 val endMs = ov.timeRange.endMs.value
-                val trackColor = when (ov) {
-                    is Overlay.Sticker -> Color.Cyan.copy(alpha = 0.5f)
-                    is Overlay.Subtitle -> Color.Yellow.copy(alpha = 0.5f)
-                    is Overlay.Music -> Color.Magenta.copy(alpha = 0.5f)
-                }
+                val trackColor = Color(0xFF2A2A2A)
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(28.dp)
-                        .horizontalScroll(scrollState),
+                        .horizontalScroll(scrollState, enabled = !isRowSelected),
                 ) {
                     val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
                     val startPx = (startMs.toFloat() / totalMs) * timelineWidthPx
                     val endPx = (endMs.toFloat() / totalMs) * timelineWidthPx
-                    // Track
+                    // Base track line (subtle)
                     Box(
                         modifier = Modifier
                             .width(timelineWidthDp)
                             .height(2.dp)
                             .align(Alignment.CenterStart)
-                            .background(Color.White.copy(alpha = 0.1f)),
+                            .background(Color.White.copy(alpha = 0.06f)),
                     )
-                    // Range bar
+                    // Range area (배경은 타입 색, 선택 시 노란 테두리)
+                    val isSelected = isRowSelected
                     Box(
                         modifier = Modifier
                             .padding(start = with(density) { startPx.toDp() })
                             .width(with(density) { (endPx - startPx).toDp() })
-                            .height(10.dp)
+                            .height(16.dp)
                             .align(Alignment.CenterStart)
-                            .background(trackColor),
+                            .background(trackColor)
+                            .then(if (isSelected) Modifier.border(2.dp, Color(0xFFFFD54F)) else Modifier)
+                            .then(
+                                if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
+                                    var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                                    val widthPx = endPx - startPx
+                                    detectDragGestures(
+                                        onDragStart = { accumulated = 0f },
+                                        onDrag = { change, drag ->
+                                            change.consume()
+                                            accumulated += drag.x
+                                            val newStartPx = (startPx + accumulated).coerceIn(0f, timelineWidthPx - widthPx)
+                                            val newEndPx = (newStartPx + widthPx).coerceIn(widthPx, timelineWidthPx)
+                                            val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                            val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                            onDragStartHandle(ov.id, newStartMs)
+                                            onDragEndHandle(ov.id, newEndMs)
+                                        },
+                                    )
+                                } else Modifier
+                            )
+                            .clickable { onClickOverlay(ov.id) },
                     )
-                    // Left handle
+                    // Left handle (투명 핫스팟 + 누적 드래그) - 선택 시에만 활성화
                     Box(
                         modifier = Modifier
-                            .padding(start = with(density) { (startPx - 6f).coerceAtLeast(0f).toDp() })
-                            .width(12.dp)
-                            .height(20.dp)
+                            .padding(start = with(density) { (startPx - 12f).coerceAtLeast(0f).toDp() })
+                            .width(24.dp)
+                            .height(24.dp)
                             .align(Alignment.CenterStart)
-                            .background(Color.Red)
-                            .pointerInput(ov.id, timelineWidthPx) {
-                                detectDragGestures { change, drag ->
-                                    change.consume()
-                                    val newStartPx = (startPx + drag.x).coerceIn(0f, endPx - 8f)
-                                    val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
-                                    onDragStartHandle(ov.id, newStartMs)
-                                }
-                            },
+                            .background(Color.Transparent)
+                            .then(
+                                if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
+                                    var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                                    detectDragGestures(
+                                        onDragStart = { accumulated = 0f },
+                                        onDrag = { change, drag ->
+                                            change.consume()
+                                            accumulated += drag.x
+                                            val newStartPx = (startPx + accumulated).coerceIn(0f, endPx - 8f)
+                                            val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                            onDragStartHandle(ov.id, newStartMs)
+                                        },
+                                    )
+                                } else Modifier
+                            ),
                     )
-                    // Right handle
+                    // Right handle (투명 핫스팟 + 누적 드래그) - 선택 시에만 활성화
                     Box(
                         modifier = Modifier
-                            .padding(start = with(density) { (endPx - 6f).coerceAtLeast(0f).toDp() })
-                            .width(12.dp)
-                            .height(20.dp)
+                            .padding(start = with(density) { (endPx - 12f).coerceAtLeast(0f).toDp() })
+                            .width(24.dp)
+                            .height(24.dp)
                             .align(Alignment.CenterStart)
-                            .background(Color.Blue)
-                            .pointerInput(ov.id, timelineWidthPx) {
-                                detectDragGestures { change, drag ->
-                                    change.consume()
-                                    val newEndPx = (endPx + drag.x).coerceIn(startPx + 8f, timelineWidthPx)
-                                    val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
-                                    onDragEndHandle(ov.id, newEndMs)
-                                }
-                            },
+                            .background(Color.Transparent)
+                            .then(
+                                if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
+                                    var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                                    detectDragGestures(
+        								onDragStart = { accumulated = 0f },
+                                        onDrag = { change, drag ->
+                                            change.consume()
+                                            accumulated += drag.x
+                                            val newEndPx = (endPx + accumulated).coerceIn(startPx + 8f, timelineWidthPx)
+                                            val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                            onDragEndHandle(ov.id, newEndMs)
+                                        },
+                                    )
+                                } else Modifier
+                            ),
                     )
                 }
             }
