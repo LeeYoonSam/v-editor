@@ -7,7 +7,7 @@ import org.junit.Test
 class TimelineTest {
 
     @Test
-    fun givenSameStartAndEnd_whenCreateTimeRange_thenThrows() {
+    fun given_same_start_and_end_when_create_time_range_then_throws() {
         assertThrows(IllegalArgumentException::class.java) {
             val startInclusive = TimeMs(10)
             val endExclusive = TimeMs(10)
@@ -16,7 +16,7 @@ class TimelineTest {
     }
 
     @Test
-    fun givenOverlappingClipRanges_whenCreateTimeline_thenThrows() {
+    fun given_overlapping_clip_ranges_when_create_timeline_then_throws() {
         val firstClipRange = TimeRange(TimeMs(0), TimeMs(1000))
         val overlappingClipRange = TimeRange(TimeMs(500), TimeMs(1500))
         val firstClip = VideoClip("firstClip", "uri://first", firstClipRange)
@@ -27,7 +27,7 @@ class TimelineTest {
     }
 
     @Test
-    fun givenOverlappingOverlayRanges_whenCreateTimeline_thenThrows() {
+    fun given_overlapping_overlay_ranges_when_create_timeline_then_throws() {
         val baseClipRange = TimeRange(TimeMs(0), TimeMs(1000))
         val overlappingOverlayRange = TimeRange(TimeMs(500), TimeMs(1500))
         val baseClip = VideoClip("baseClip", "uri://clip", baseClipRange)
@@ -39,7 +39,7 @@ class TimelineTest {
     }
 
     @Test
-    fun givenAdjacentClipRanges_whenCreateTimeline_thenSucceeds() {
+    fun given_adjacent_clip_ranges_when_create_timeline_then_succeeds() {
         val firstRange = TimeRange(TimeMs(0), TimeMs(1000))
         val secondRange = TimeRange(TimeMs(1000), TimeMs(2000))
         val firstClip = VideoClip("firstClip", "uri://first", firstRange)

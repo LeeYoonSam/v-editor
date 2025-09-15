@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,10 +42,12 @@ fun EditorUi(presenter: EditorPresenter) {
         onAddMusic = presenter::onAddMusicClicked,
         onExport = presenter::onExportClicked,
         onImport = presenter::onImportRequested,
+        onCloseSheet = presenter::onCloseSheet,
     )
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun EditorContent(
     state: EditorState,
     onAddSticker: () -> Unit,
@@ -51,6 +55,7 @@ private fun EditorContent(
     onAddMusic: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
+    onCloseSheet: () -> Unit,
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -79,6 +84,25 @@ private fun EditorContent(
                 )
                 TimelineBar()
             }
+        }
+
+        when (state.overlaySheet) {
+            is EditorOverlaySheet.Sticker -> {
+                ModalBottomSheet(onDismissRequest = onCloseSheet) {
+                    Text("Sticker settings")
+                }
+            }
+            is EditorOverlaySheet.Subtitle -> {
+                ModalBottomSheet(onDismissRequest = onCloseSheet) {
+                    Text("Subtitle settings")
+                }
+            }
+            is EditorOverlaySheet.Music -> {
+                ModalBottomSheet(onDismissRequest = onCloseSheet) {
+                    Text("Music settings")
+                }
+            }
+            null -> Unit
         }
     }
 }
@@ -174,5 +198,6 @@ private fun EditorPreview_Timeline() {
         onAddMusic = {},
         onExport = {},
         onImport = {},
+        onCloseSheet = {},
     )
 }

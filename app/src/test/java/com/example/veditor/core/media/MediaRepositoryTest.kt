@@ -10,7 +10,7 @@ import org.junit.Test
 class MediaRepositoryTest {
 
     @Test
-    fun givenFake_whenListVideos_thenReturnsSeed() = runBlocking {
+    fun given_fake_repo_when_list_videos_then_returns_seed() = runBlocking {
         val seed = listOf(
             DeviceVideo(uri = "content://video/1", displayName = "v1", durationMs = TimeMs(1000)),
             DeviceVideo(uri = "content://video/2", displayName = "v2", durationMs = TimeMs(2000)),
@@ -24,7 +24,7 @@ class MediaRepositoryTest {
     }
 
     @Test
-    fun givenSourceAndRange_whenBuildClip_thenUsesSourceAndRange() = runBlocking {
+    fun given_source_and_range_when_build_clip_then_uses_source_and_range() = runBlocking {
         val repo = FakeMediaRepository()
         val range = TimeRange(TimeMs(100), TimeMs(300))
 

@@ -18,7 +18,7 @@ class HomePresenterTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun givenRepo_whenInit_stateContainsVideos() = runTest {
+    fun given_repo_when_init_then_state_contains_videos() = runTest {
         val repo = FakeMediaRepository(
             listOf(
                 DeviceVideo("content://1", "v1", TimeMs(1000)),
@@ -33,7 +33,7 @@ class HomePresenterTest {
     }
 
     @Test
-    fun state_emitsLatestVideos() = runTest {
+    fun given_presenter_when_collect_state_then_emits_latest_videos() = runTest {
         val repo = FakeMediaRepository(
             listOf(
                 DeviceVideo("content://1", "v1", TimeMs(1000)),

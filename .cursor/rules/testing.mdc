@@ -11,15 +11,14 @@ globs:
 - 최소 커버리지 목표: 핵심 도메인/프레젠테이션 80% 이상.
 
 네이밍/구조 컨벤션
-- 테스트 클래스명: `<SUT명>Test` (예: `TimelineTest`, `TimeTest`)
-- UseCase 클래스명: 반드시 `*UseCase` 접미사를 붙인다. (예: `BuildTimelineFromSelectionUseCase`)
-- UseCase 테스트 클래스명: SUT와 동일 접두사 + `Test` (예: `BuildTimelineFromSelectionUseCaseTest`)
-- 테스트 함수명 패턴(택1, 혼용 가능)
-  - `given_<상태>_when_<행위>_then_<결과>()`
-  - `should_<행위>_when_<상태>()`
-  - Kotlin 백틱을 활용한 자연어: `` `should reject negative time` ``
-- 언더스코어로 구간을 구분하고, 소문자+동사 위주로 서술한다.
+- 테스트 클래스명: <SUT명>Test (예: TimelineTest, TimeTest)
+- UseCase 클래스명: 반드시 *UseCase 접미사를 붙인다. (예: BuildTimelineFromSelectionUseCase)
+- UseCase 테스트 클래스명: SUT와 동일 접두사 + Test (예: BuildTimelineFromSelectionUseCaseTest)
+- 테스트 함수명 패턴(단일 규칙으로 통일)
+  - given_<state>_when_<action>_then_<result>()
+  - 세그먼트는 모두 snake_case로 작성한다. camelCase 금지.
+  - 예: given_single_selection_when_build_timeline_then_timeline_has_one_clip()
 - 본문 구조: Arrange / Act / Assert 3단계로 구분(주석 또는 빈 줄)
 - 파일/패키지: 프로덕션 코드와 동일한 패키지 경로를 미러링한다.
 - 하나의 테스트는 한 가지 책임만 검증한다(필요 시 매개변수화 테스트 고려).
-- UI 테스트 함수명 권장: `ui_<보이는현상>_when_<상태>()`
+- UI 테스트 함수명 권장: ui_<phenomenon>_when_<state>() (snake_case)

@@ -6,7 +6,7 @@ import org.junit.Test
 class BuildTimelineFromSelectionUseCaseTest {
 
     @Test
-    fun givenSingleSelection_whenBuildTimeline_thenTimelineHasOneClip() {
+    fun given_single_selection_when_build_timeline_then_timeline_has_one_clip() {
         val selectedUris = listOf("content://video/1")
         val build = BuildTimelineFromSelectionUseCase()
         val timeline = build(selectedUris)
@@ -14,7 +14,7 @@ class BuildTimelineFromSelectionUseCaseTest {
     }
 
     @Test
-    fun givenMultipleSelections_whenBuildTimeline_thenClipsAreAdjacent() {
+    fun given_multiple_selections_when_build_timeline_then_clips_are_adjacent() {
         val selectedUris = listOf("content://video/1", "content://video/2")
         val build = BuildTimelineFromSelectionUseCase(
             defaultClipDurationMs = 1_000,

@@ -11,7 +11,7 @@ import org.junit.Test
 class GetDeviceVideosUseCaseTest {
 
     @Test
-    fun givenRepo_whenInvoke_thenEmitsVideos() = runBlocking {
+    fun given_repo_when_invoke_then_emits_videos() = runBlocking {
         val repo = FakeMediaRepository(
             listOf(
                 DeviceVideo("content://1", "v1", TimeMs(1000)),

@@ -17,7 +17,7 @@ class ImportPresenterTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun givenRepo_whenInit_stateContainsVideosAndEmptySelection() = runTest {
+    fun given_repo_when_init_then_state_contains_videos_and_empty_selection() = runTest {
         val repo = FakeMediaRepository(
             listOf(DeviceVideo("content://1", "v1", TimeMs(1000))),
         )
@@ -32,7 +32,7 @@ class ImportPresenterTest {
     }
 
     @Test
-    fun toggleSelection_updatesSelectedUris() = runTest {
+    fun given_presenter_when_toggle_selection_then_updates_selected_uris() = runTest {
         val repo = FakeMediaRepository(
             listOf(DeviceVideo("content://1", "v1", TimeMs(1000))),
         )
