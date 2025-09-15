@@ -19,6 +19,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ fun EditorUi(presenter: EditorPresenter) {
         onExport = presenter::onExportClicked,
         onImport = presenter::onImportRequested,
         onCloseSheet = presenter::onCloseSheet,
+        onConfirmOverlay = presenter::confirmOverlay,
     )
 }
 
@@ -56,6 +58,7 @@ private fun EditorContent(
     onExport: () -> Unit,
     onImport: () -> Unit,
     onCloseSheet: () -> Unit,
+    onConfirmOverlay: () -> Unit,
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -89,17 +92,35 @@ private fun EditorContent(
         when (state.overlaySheet) {
             is EditorOverlaySheet.Sticker -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
-                    Text("Sticker settings")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(16.dp)) {
+                        Text("Sticker settings")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = onCloseSheet) { Text("취소") }
+                            TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                        }
+                    }
                 }
             }
             is EditorOverlaySheet.Subtitle -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
-                    Text("Subtitle settings")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(16.dp)) {
+                        Text("Subtitle settings")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = onCloseSheet) { Text("취소") }
+                            TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                        }
+                    }
                 }
             }
             is EditorOverlaySheet.Music -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
-                    Text("Music settings")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(16.dp)) {
+                        Text("Music settings")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = onCloseSheet) { Text("취소") }
+                            TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                        }
+                    }
                 }
             }
             null -> Unit
@@ -199,5 +220,6 @@ private fun EditorPreview_Timeline() {
         onExport = {},
         onImport = {},
         onCloseSheet = {},
+        onConfirmOverlay = {},
     )
 }

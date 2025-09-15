@@ -31,6 +31,21 @@ class TimelineEditUseCasesTest {
     }
 
     @Test
+    fun given_clip_and_newRange_touching_neighbors_when_trim_then_throws() {
+        val timeline = sampleTimeline()
+        val trim = TrimClipUseCase()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            // new end goes beyond neighbor start
+            trim(timeline, clipIndex = 0, newRange = TimeRange(TimeMs(100), TimeMs(1001)))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            // new start goes before previous (none, but invalid when decreasing order)
+            trim(timeline, clipIndex = 1, newRange = TimeRange(TimeMs(999), TimeMs(2000)))
+        }
+    }
+
+    @Test
     fun given_clip_and_newRange_outside_original_when_trim_then_throws() {
         val timeline = sampleTimeline()
         val trim = TrimClipUseCase()
@@ -59,6 +74,18 @@ class TimelineEditUseCasesTest {
     }
 
     @Test
+    fun given_clip_when_split_at_bounds_then_throws() {
+        val timeline = sampleTimeline()
+        val split = SplitClipUseCase()
+        assertThrows(IllegalArgumentException::class.java) {
+            split(timeline, clipIndex = 0, splitAt = TimeMs(0))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            split(timeline, clipIndex = 0, splitAt = TimeMs(1000))
+        }
+    }
+
+    @Test
     fun given_adjacent_same_source_when_merge_then_combined_range() {
         val timeline = sampleTimeline()
         val merge = MergeAdjacentClipsUseCase()
@@ -75,6 +102,18 @@ class TimelineEditUseCasesTest {
     fun given_adjacent_different_source_when_merge_then_throws() {
         val c1 = VideoClip("c1", "content://a", TimeRange(TimeMs(0), TimeMs(1000)))
         val c2 = VideoClip("c2", "content://b", TimeRange(TimeMs(1000), TimeMs(2000)))
+        val timeline = Timeline(clips = listOf(c1, c2), overlays = emptyList())
+        val merge = MergeAdjacentClipsUseCase()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            merge(timeline, firstIndex = 0)
+        }
+    }
+
+    @Test
+    fun given_non_adjacent_when_merge_then_throws() {
+        val c1 = VideoClip("c1", "content://a", TimeRange(TimeMs(0), TimeMs(1000)))
+        val c2 = VideoClip("c2", "content://a", TimeRange(TimeMs(1200), TimeMs(2000)))
         val timeline = Timeline(clips = listOf(c1, c2), overlays = emptyList())
         val merge = MergeAdjacentClipsUseCase()
 

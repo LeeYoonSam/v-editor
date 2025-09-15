@@ -34,6 +34,21 @@ class EditorPresenterTest {
         presenter.setTimeline(timeline)
         assertEquals(timeline, presenter.state.value.timeline)
     }
+
+    @Test
+    fun given_draft_and_timeline_when_confirm_overlay_then_overlay_added_and_sheet_closed() {
+        val clip = VideoClip("c1", "uri://1", TimeRange(TimeMs(0), TimeMs(1000)))
+        val timeline = Timeline(listOf(clip), emptyList())
+        val presenter = EditorPresenter(initialTimeline = timeline)
+
+        presenter.onAddStickerClicked()
+        presenter.confirmOverlay()
+
+        val state = presenter.state.value
+        assertEquals(1, state.timeline?.overlays?.size)
+        assertEquals(null, state.overlaySheet)
+        assertEquals(null, state.overlayDraft)
+    }
 }
 
 
