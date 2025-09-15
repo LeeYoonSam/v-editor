@@ -59,6 +59,8 @@ globs:
 - UI 테스트: Compose UI는 Semantics 기반 매칭, 불안정한 대기 금지(Idling, runOnIdle)
 - 미디어 I/O: 실제 I/O는 통합 테스트로 분리, 단위 테스트는 Fake/Temp 디렉터리 사용
 - 커버리지 목표: 핵심 도메인/프레젠테이션 80%+
+  - 네이밍: 모든 테스트 함수는 given_when_then(snake_case) 패턴을 따른다.
+  - UI 테스트 식별자: 안정적인 testTag(정적 + 동적 병행)를 필수로 부여한다.
 
 ## 8. 에러 처리/로깅
 - 사용자 에러 메시지와 개발자 로그 분리

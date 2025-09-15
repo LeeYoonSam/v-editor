@@ -7,6 +7,9 @@ globs:
 - 모든 작업은 실패 테스트 먼저 작성 후 구현한다.
 - Presenter/UseCase는 단위 테스트를 우선하며, 경계/에러 케이스를 포함한다.
 - Compose UI 테스트는 Semantics 매칭을 사용하고 임의 대기 사용 금지.
+  - testTag는 안정적인 선택자를 위해 필수 사용. 동적 id와 별개로 정적 tag를 함께 부여한다.
+  - 예: overlay_range_${'$'}{id} + overlay_range(정적), 핸들은 overlay_handle_start_${'$'}{id} + overlay_handle_start
+  - 트리 병합 이슈 시 useUnmergedTree=true 사용을 고려.
 - 미디어 I/O는 통합 테스트에서만 실제 접근을 허용하고 단위 테스트는 Fake 사용.
 - 최소 커버리지 목표: 핵심 도메인/프레젠테이션 80% 이상.
 
@@ -14,14 +17,15 @@ globs:
 - 테스트 클래스명: <SUT명>Test (예: TimelineTest, TimeTest)
 - UseCase 클래스명: 반드시 *UseCase 접미사를 붙인다. (예: BuildTimelineFromSelectionUseCase)
 - UseCase 테스트 클래스명: SUT와 동일 접두사 + Test (예: BuildTimelineFromSelectionUseCaseTest)
-- 테스트 함수명 패턴(단일 규칙으로 통일)
+- 테스트 함수명 패턴(단일 규칙)
   - given_<state>_when_<action>_then_<result>()
-  - 세그먼트는 모두 snake_case로 작성한다. camelCase 금지.
-  - 예: given_single_selection_when_build_timeline_then_timeline_has_one_clip()
+  - 세그먼트는 snake_case. camelCase 금지.
+  - 예(단위): given_single_selection_when_build_timeline_then_timeline_has_one_clip()
+  - 예(UI): given_selected_overlay_when_delete_then_removed()
 - 본문 구조: Arrange / Act / Assert 3단계로 구분(주석 또는 빈 줄)
 - 파일/패키지: 프로덕션 코드와 동일한 패키지 경로를 미러링한다.
 - 하나의 테스트는 한 가지 책임만 검증한다(필요 시 매개변수화 테스트 고려).
-- UI 테스트 함수명 권장: ui_<phenomenon>_when_<state>() (snake_case)
+  
 
 주석/네이밍 원칙 (코드 품질)
 - 제거된 코드 자리에 "제거됨" 같은 주석을 남기지 않는다. 불필요한 주석은 즉시 삭제한다.
