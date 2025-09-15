@@ -1,6 +1,8 @@
 package com.example.veditor.core.model
 
 import androidx.annotation.IntRange
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Timeline overlays.
@@ -15,6 +17,7 @@ import androidx.annotation.IntRange
  *
  * @see TimeRange
  */
+@Serializable
 sealed class Overlay {
     abstract val id: String
     abstract val timeRange: TimeRange
@@ -28,6 +31,8 @@ sealed class Overlay {
      * @param scale scale factor
      * @param rotationDeg rotation in degrees
      */
+    @Serializable
+    @SerialName("sticker")
     data class Sticker(
         override val id: String,
         override val timeRange: TimeRange,
@@ -47,6 +52,8 @@ sealed class Overlay {
      * @param textSizeSp font size in sp
      * @param colorArgb packed ARGB color (0xAARRGGBB)
      */
+    @Serializable
+    @SerialName("subtitle")
     data class Subtitle(
         override val id: String,
         override val timeRange: TimeRange,
@@ -63,6 +70,8 @@ sealed class Overlay {
      * @param sourceUri audio source
      * @param volumePercent 0..100
      */
+    @Serializable
+    @SerialName("music")
     data class Music(
         override val id: String,
         override val timeRange: TimeRange,

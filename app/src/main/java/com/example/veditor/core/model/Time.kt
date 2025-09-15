@@ -1,5 +1,13 @@
 package com.example.veditor.core.model
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
 /**
  * Milliseconds wrapper to make time units explicit across the codebase.
  *
@@ -13,10 +21,17 @@ package com.example.veditor.core.model
  * @param value non-negative milliseconds
  */
 @JvmInline
+@Serializable(with = TimeMsAsLongSerializer::class)
 value class TimeMs(val value: Long) {
     init {
         require(value >= 0) { "time must be >= 0" }
     }
+}
+
+object TimeMsAsLongSerializer : KSerializer<TimeMs> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("TimeMs", PrimitiveKind.LONG)
+    override fun serialize(encoder: Encoder, value: TimeMs) { encoder.encodeLong(value.value) }
+    override fun deserialize(decoder: Decoder): TimeMs = TimeMs(decoder.decodeLong())
 }
 
 /**
@@ -34,6 +49,7 @@ value class TimeMs(val value: Long) {
  * @param endMs exclusive end, must be > start
  * @return durationMs computed as end-start
  */
+@Serializable
 data class TimeRange(
     val startMs: TimeMs,
     val endMs: TimeMs,

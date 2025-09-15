@@ -1,5 +1,7 @@
 package com.example.veditor.core.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Reference to a segment of a source video.
  *
@@ -17,6 +19,7 @@ package com.example.veditor.core.model
  * @param sourceUri source video URI
  * @param range sub-range of the source
  */
+@Serializable
 data class VideoClip(
     val id: String,
     val sourceUri: String,

@@ -1,5 +1,7 @@
 package com.example.veditor.core.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Non-destructive edit model composed of ordered [clips] and timed [overlays].
  *
@@ -15,6 +17,7 @@ package com.example.veditor.core.model
  * @param clips ordered, non-overlapping clips
  * @param overlays timed overlays
  */
+@Serializable
 data class Timeline(
     val clips: List<VideoClip>,
     val overlays: List<Overlay>,
