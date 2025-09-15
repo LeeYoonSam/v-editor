@@ -1,10 +1,15 @@
 package com.example.veditor.feature.importmedia
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,16 +39,23 @@ import com.example.veditor.core.media.DeviceVideo
 @Composable
 fun ImportUi(presenter: ImportPresenter, onConfirm: (selectedUris: List<String>) -> Unit, onClose: () -> Unit) {
     val state by presenter.state.collectAsState()
+    val picker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(),
+        onResult = { uris: List<Uri> ->
+            if (uris.isNotEmpty()) presenter.replaceSelection(uris.map { it.toString() })
+        },
+    )
     ImportContent(
         state = state,
         onToggle = presenter::toggleSelection,
         onConfirm = { onConfirm(state.selectedUris.toList()) },
+        onPickFromSystem = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
         onClose = onClose,
     )
 }
 
 @Composable
-private fun ImportContent(state: ImportState, onToggle: (String) -> Unit, onConfirm: () -> Unit, onClose: () -> Unit) {
+private fun ImportContent(state: ImportState, onToggle: (String) -> Unit, onConfirm: () -> Unit, onPickFromSystem: () -> Unit, onClose: () -> Unit) {
     Scaffold(
         topBar = { ImportTopBar(onClose = onClose) },
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -51,6 +63,7 @@ private fun ImportContent(state: ImportState, onToggle: (String) -> Unit, onConf
             ImportBottomBar(
                 selectedCount = state.selectedUris.size,
                 onConfirm = onConfirm,
+                onPick = onPickFromSystem,
             )
         },
     ) { inner ->
@@ -85,7 +98,7 @@ private fun ImportTopBar(onClose: () -> Unit) {
 }
 
 @Composable
-private fun ImportBottomBar(selectedCount: Int, onConfirm: () -> Unit) {
+private fun ImportBottomBar(selectedCount: Int, onConfirm: () -> Unit, onPick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -93,8 +106,9 @@ private fun ImportBottomBar(selectedCount: Int, onConfirm: () -> Unit) {
             .background(MaterialTheme.colorScheme.surface)
             .padding(12.dp),
     ) {
-        Button(onClick = onConfirm, enabled = selectedCount > 0, modifier = Modifier.align(Alignment.Center)) {
-            Text("가져오기($selectedCount)")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.align(Alignment.Center)) {
+            Button(onClick = onPick) { Text("갤러리") }
+            Button(onClick = onConfirm, enabled = selectedCount > 0) { Text("가져오기($selectedCount)") }
         }
     }
 }

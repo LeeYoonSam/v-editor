@@ -40,4 +40,8 @@ class ImportPresenter(
     fun clearSelection() {
         selectedUrisFlow.value = emptySet()
     }
+
+    fun replaceSelection(uris: Collection<String>) {
+        selectedUrisFlow.value = uris.toSet()
+    }
 }
