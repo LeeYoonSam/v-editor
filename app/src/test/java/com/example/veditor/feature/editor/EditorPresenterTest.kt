@@ -5,6 +5,8 @@ import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
 import com.example.veditor.core.model.VideoClip
+import com.example.veditor.core.domain.ExportResult
+import com.example.veditor.core.domain.ExportUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -139,5 +141,22 @@ class EditorPresenterTest {
         assertEquals("content://new", updated.sourceUri)
         assertEquals(100L, updated.timeRange.startMs.value)
         assertEquals(1300L, updated.timeRange.endMs.value)
+    }
+
+    @Test
+    fun given_timeline_when_export_clicked_then_isExporting_eventually_finishes() {
+        val clip = VideoClip("c1", "uri://1", TimeRange(TimeMs(0), TimeMs(1000)))
+        val timeline = Timeline(listOf(clip), emptyList())
+        val fake = ExportUseCase { _, _ -> ExportResult.Success("content://out") }
+        val presenter = EditorPresenter(initialTimeline = timeline, exportUseCase = fake)
+
+        presenter.onExportClicked()
+        // exporting flag should be set true promptly
+        val afterStart = presenter.state.value
+        assertEquals(true, afterStart.isExporting)
+        // Give some time for coroutine to flip back (best-effort without test dispatcher)
+        Thread.sleep(100)
+        val afterEnd = presenter.state.value
+        assertEquals(false, afterEnd.isExporting)
     }
 }

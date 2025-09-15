@@ -47,6 +47,7 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [x] C5. 음악 추가/볼륨 조절/삭제
   - 보완 기록: Presenter 음악 추가/편집 플로우 테스트(추가/업데이트), `updateMusicDraft`/`confirmOverlay` 경로 검증 완료
 - [ ] C6. 렌더링(내보내기) 파이프라인 설계(MVP: 단순 병합)
+  - 보완 기록: `ExportUseCase`/`FakeExportUseCase` 추가, `EditorPresenter`에 isExporting 토글 연동 및 단위 테스트.
 
 ### D. 화면(UI)
 - [x] D0. 임포트 화면(디바이스 영상 그리드/다중 선택/확정)

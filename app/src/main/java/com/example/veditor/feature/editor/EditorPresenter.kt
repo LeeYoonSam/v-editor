@@ -5,9 +5,16 @@ import com.example.veditor.core.model.Overlay
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
+import com.example.veditor.core.domain.ExportParams
+import com.example.veditor.core.domain.ExportResult
+import com.example.veditor.core.domain.ExportUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 data class EditorState(
     val timeline: Timeline?,
@@ -19,6 +26,7 @@ data class EditorState(
 
 class EditorPresenter(
     initialTimeline: Timeline? = null,
+    private val exportUseCase: ExportUseCase? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -72,7 +80,18 @@ class EditorPresenter(
             ),
         )
     }
-    fun onExportClicked() { /* no-op for skeleton */ }
+    private var exportJob: Job? = null
+
+    fun onExportClicked() {
+        val tl = _state.value.timeline ?: return
+        if (exportJob != null) return
+        _state.value = _state.value.copy(isExporting = true)
+        exportJob = CoroutineScope(Dispatchers.Default).launch {
+            val result = exportUseCase?.invoke(ExportParams(tl)) { _ -> /* progress hook */ }
+            _state.value = _state.value.copy(isExporting = false)
+            exportJob = null
+        }
+    }
 
     fun onCloseSheet() {
         _state.value = _state.value.copy(overlaySheet = null, overlayDraft = null)
