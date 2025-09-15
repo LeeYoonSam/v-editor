@@ -28,8 +28,8 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [x] A3. 베이스 네비게이션 구성(Circuit `Navigator`/`BackStack`)
 - [x] A4. 매니페스트 런처 액티비티/Compose 스켈레톤 추가(초안)
 - [~] A5. 미디어 권한 전략(API33+ Photo Picker 우선, 필요 시 READ_MEDIA_VIDEO)
- - [x] A6. 디자인 규칙/용어집 문서 추가(`.cursor/rules/design.mdc`, `.cursor/rules/glossary.mdc`)
-   - 보완 기록: 색상/간격/타임라인 UX/시트/이벤트 시그니처 규칙 정의. 모든 구현은 문서 우선 참조.
+- [x] A6. 디자인 규칙/용어집 문서 추가(`.cursor/rules/design.mdc`, `.cursor/rules/glossary.mdc`)
+  - 보완 기록: 색상/간격/타임라인 UX/시트/이벤트 시그니처 규칙 정의. 모든 구현은 문서 우선 참조.
 
 ### B. 도메인/데이터
 - [x] B1. 엔티티 정의: `VideoClip`, `Timeline`, `Overlay(Sticker, Subtitle, Music)`
@@ -40,9 +40,11 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [x] C0. 임포트 플로우 유스케이스(선택→클립 변환→타임라인 생성)
 - [x] C1. 영상 불러오기(use case)
 - [x] C2. 타임라인 트림/분할/병합
-- [ ] C3. 스티커 추가/이동/삭제
-- [ ] C4. 자막 추가/스타일 변경/삭제
-- [ ] C5. 음악 추가/볼륨 조절/삭제
+- [x] C3. 스티커 추가/이동/삭제
+  - 보완 기록: Presenter 삭제 API(`deleteSelectedOverlay`, `deleteOverlayById`), 시트 UI에 삭제 버튼 연결, 단위 테스트 추가
+- [x] C4. 자막 추가/스타일 변경/삭제
+- [x] C5. 음악 추가/볼륨 조절/삭제
+  - 보완 기록: Presenter 음악 추가/편집 플로우 테스트(추가/업데이트), `updateMusicDraft`/`confirmOverlay` 경로 검증 완료
 - [ ] C6. 렌더링(내보내기) 파이프라인 설계(MVP: 단순 병합)
 
 ### D. 화면(UI)

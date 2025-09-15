@@ -322,6 +322,27 @@ class EditorPresenter(
         _state.value = _state.value.copy(timeline = currentTimeline.copy(overlays = newList))
     }
 
+    fun deleteSelectedOverlay() {
+        val currentTimeline = _state.value.timeline ?: return
+        val selected = _state.value.selectedOverlayId ?: return
+        val newList = currentTimeline.overlays.filterNot { it.id == selected }
+        _state.value = _state.value.copy(
+            timeline = currentTimeline.copy(overlays = newList),
+            overlaySheet = null,
+            overlayDraft = null,
+            selectedOverlayId = null,
+        )
+    }
+
+    fun deleteOverlayById(overlayId: String) {
+        val currentTimeline = _state.value.timeline ?: return
+        val newList = currentTimeline.overlays.filterNot { it.id == overlayId }
+        _state.value = _state.value.copy(timeline = currentTimeline.copy(overlays = newList))
+        if (_state.value.selectedOverlayId == overlayId) {
+            _state.value = _state.value.copy(overlaySheet = null, overlayDraft = null, selectedOverlayId = null)
+        }
+    }
+
     private fun generateOverlayId(): String = "ov_" + System.currentTimeMillis()
 }
 

@@ -93,6 +93,7 @@ fun EditorUi(presenter: EditorPresenter) {
             )
         },
         onEditOverlay = presenter::editOverlay,
+        onDeleteSelectedOverlay = presenter::deleteSelectedOverlay,
     )
 }
 
@@ -117,6 +118,7 @@ private fun EditorContent(
     onUpdateSubtitleStyle: (textSizeSp: Float?, colorArgb: Long?) -> Unit = { _, _ -> },
     onUpdateSubtitlePosition: (x: Float?, y: Float?) -> Unit = { _, _ -> },
     onEditOverlay: (overlayId: String) -> Unit = {},
+    onDeleteSelectedOverlay: () -> Unit = {},
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -170,6 +172,9 @@ private fun EditorContent(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = onCloseSheet) { Text("취소") }
                             TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                            if (state.selectedOverlayId != null) {
+                                TextButton(onClick = onDeleteSelectedOverlay) { Text("삭제") }
+                            }
                         }
                     }
                 }
@@ -194,6 +199,9 @@ private fun EditorContent(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = onCloseSheet) { Text("취소") }
                             TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                            if (state.selectedOverlayId != null) {
+                                TextButton(onClick = onDeleteSelectedOverlay) { Text("삭제") }
+                            }
                         }
                     }
                 }
@@ -218,6 +226,9 @@ private fun EditorContent(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = onCloseSheet) { Text("취소") }
                             TextButton(onClick = onConfirmOverlay) { Text("확인") }
+                            if (state.selectedOverlayId != null) {
+                                TextButton(onClick = onDeleteSelectedOverlay) { Text("삭제") }
+                            }
                         }
                     }
                 }
