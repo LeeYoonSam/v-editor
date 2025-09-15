@@ -33,6 +33,11 @@ globs:
 - 상태 객체는 value class/데이터 클래스 사용, 모든 필드는 불변으로 선언
 - 네비게이션은 Circuit `Navigator` 사용. Backstack 변경은 Presenter에서만 수행
 
+### 참고 문서 연결
+- 모든 UI/상태 관련 구현 시 아래 문서를 우선 참고한다.
+  - `.cursor/rules/design.mdc` (디자인 규칙/사양)
+  - `.cursor/rules/glossary.mdc` (용어집/명칭 규칙)
+
 ## 4. Coroutines/Flow
 - ViewModel/Presenter 스코프: `CoroutineScope`는 Circuit 제공 스코프 또는 `SupervisorJob` 기반
 - 디스패처: `Dispatchers.Default`(연산), `Dispatchers.IO`(파일/미디어), UI는 `Main.immediate`

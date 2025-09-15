@@ -1,0 +1,54 @@
+---
+description: 용어집(Glossary) – 명칭/정의/사용 규칙(Always)
+alwaysApply: true
+globs:
+---
+
+# 용어집(Glossary)
+
+본 문서는 프로젝트에서 사용하는 핵심 용어/컴포넌트의 명칭과 정의를 고정합니다. 모든 코드/디자인/문서에서 동일한 용어를 사용합니다.
+
+## A. 타임라인/미디어
+- Timeline: 여러 `VideoClip`과 `Overlay`를 담는 편집 단위
+- VideoClip: 원본 영상의 연속 구간. `range: TimeRange`
+- TimeMs: 밀리초 단위 시간 값 래퍼
+- TimeRange: 시작/끝 시간(ms) 쌍
+
+## B. 오버레이(Overlay)
+- Overlay: Sticker | Subtitle | Music
+- Sticker: 아이콘/이미지 스탬프. 속성: `assetId, x, y, scale, rotationDeg, timeRange`
+- Subtitle: 자막. 속성: `text, x, y, textSizeSp, colorArgb, timeRange`
+- Music: 오디오. 속성: `sourceUri, volumePercent, timeRange`
+- OverlayDraft: 시트에서 편집 중인 임시 상태
+
+## C. 조작(Action)
+- Select: 리스트/프리뷰에서 대상 선택, 선택 테두리 표시
+- Edit: 선택 항목을 편집 시트로 열기
+- Confirm: 시트 확인. 선택 편집이면 업데이트, 비선택 신규는 추가
+- Drag Move: 트랙 내부 드래그로 시작/끝 동시 이동
+- Drag Resize: 좌/우 핸들 드래그로 길이 조절
+
+## D. UI 명칭
+- OverlayList: 오버레이 목록 + 트랙 행
+- OverlayPalette: 오버레이 추가 버튼 영역
+- PreviewArea: 영상 프리뷰 영역
+- EditorTopBar: 상단툴바(타이틀/상태)
+
+## E. 색상(고정 코드)
+- Accent: 노란색 0xFFFFD54F (선택 강조)
+- TrackFill: 0xFF2A2A2A
+- TrackBase: White@0.06
+- TextPrimary: 0xFFEEEEEE, TextSecondary: 0xFF9E9E9E
+
+## F. 이벤트 시그니처(함수명 규칙)
+- onAddSticker/onAddSubtitle/onAddMusic
+- onEditOverlay(id)
+- onConfirmOverlay()
+- onUpdateTime(startMs?, durationMs?)
+- onUpdateTimeForOverlay(id, startMs?, endMs?)
+- onUpdateSticker(assetId?, x?, y?, scale?, rotationDeg?)
+- onUpdateSubtitle(text)
+- onUpdateSubtitleStyle(textSizeSp?, colorArgb?)
+- onUpdateSubtitlePosition(x?, y?)
+- onUpdateMusic(volumePercent?, sourceUri?)
+
