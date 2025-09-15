@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -167,7 +168,7 @@ private fun EditorContent(
                     isPlaying = state.isPlaying,
                     onPlayPause = onPlayPause,
                 )
-                TimelineProgressBar(
+                TimelineThumbnailsBar(
                     timeline = state.timeline,
                     currentPositionMs = state.currentPositionMs,
                     onSeek = { pos -> onSeek(pos) },
@@ -547,6 +548,119 @@ private fun TimelineProgressBar(
                 .padding(start = with(density) { playheadPx.toDp() })
                 .width(2.dp)
                 .height(24.dp)
+                .background(Color.Red.copy(alpha = 0.9f)),
+        )
+    }
+}
+
+@Composable
+private fun TimelineThumbnailsBar(
+    timeline: Timeline?,
+    currentPositionMs: Long,
+    onSeek: (Long) -> Unit,
+) {
+    if (timeline == null) return
+    val totalMs = timeline.clips.last().range.endMs.value
+    val density = LocalDensity.current
+    val context = LocalContext.current
+    val dpPerMs = 0.3f
+    val timelineWidthDp = (totalMs * dpPerMs).dp
+    var viewportPx by remember { mutableStateOf(0) }
+    val scrollState = rememberScrollState()
+
+    // Extract simple thumbnails in background (coarse, e.g., every 1s)
+    val videoUri = timeline.clips.first().sourceUri
+    var thumbs by remember(videoUri) { mutableStateOf<List<androidx.compose.ui.graphics.ImageBitmap>>(emptyList()) }
+    LaunchedEffect(videoUri, totalMs) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val mmr = android.media.MediaMetadataRetriever()
+            try {
+                mmr.setDataSource(context, android.net.Uri.parse(videoUri))
+                val interval = 1000L
+                val frames = mutableListOf<androidx.compose.ui.graphics.ImageBitmap>()
+                var t = 0L
+                while (t < totalMs) {
+                    val bmp = mmr.getFrameAtTime(t * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    if (bmp != null) frames.add(bmp.asImageBitmap())
+                    t += interval
+                }
+                thumbs = frames
+            } finally {
+                mmr.release()
+            }
+        }
+    }
+
+    // Auto-scroll to keep playhead centered when possible
+    LaunchedEffect(currentPositionMs, viewportPx, totalMs) {
+        val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
+        if (viewportPx > 0 && timelineWidthPx > viewportPx) {
+            val playheadPx = (currentPositionMs.toFloat() / totalMs) * timelineWidthPx
+            val target = (playheadPx - viewportPx / 2f).coerceIn(0f, timelineWidthPx - viewportPx)
+            scrollState.animateScrollTo(target.toInt())
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .onSizeChanged { viewportPx = it.width }
+            .horizontalScroll(scrollState),
+    ) {
+        // Rail background and frames
+        Box(
+            modifier = Modifier
+                .width(timelineWidthDp)
+                .height(48.dp)
+                .background(Color.White.copy(alpha = 0.06f)),
+        )
+        Row(modifier = Modifier.width(timelineWidthDp).height(48.dp)) {
+            if (thumbs.isEmpty()) {
+                // placeholders
+                repeat(10) {
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(48.dp)
+                            .background(Color.DarkGray.copy(alpha = 0.3f)),
+                    )
+                }
+            } else {
+                val itemWidthDp = 60.dp
+                thumbs.forEach { img ->
+                    androidx.compose.foundation.Image(
+                        bitmap = img,
+                        contentDescription = null,
+                        modifier = Modifier.width(itemWidthDp).height(48.dp),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    )
+                }
+            }
+        }
+        // Seek by drag anywhere on the rail
+        Box(
+            modifier = Modifier
+                .width(timelineWidthDp)
+                .height(48.dp)
+                .pointerInput(totalMs) {
+                    detectDragGestures(onDrag = { change, _ ->
+                        change.consume()
+                        val x = change.position.x + scrollState.value
+                        val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
+                        val clamped = x.coerceIn(0f, timelineWidthPx)
+                        val pos = ((clamped / timelineWidthPx) * totalMs).toLong()
+                        onSeek(pos)
+                    })
+                },
+        )
+        // Red playhead
+        val playheadPx = (currentPositionMs.toFloat() / totalMs) * with(density) { timelineWidthDp.toPx() }
+        Box(
+            modifier = Modifier
+                .padding(start = with(density) { playheadPx.toDp() })
+                .width(2.dp)
+                .height(48.dp)
                 .background(Color.Red.copy(alpha = 0.9f)),
         )
     }
