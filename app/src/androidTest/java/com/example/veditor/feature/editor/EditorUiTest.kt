@@ -1,4 +1,4 @@
-package com.example.veditor
+package com.example.veditor.feature.editor
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -8,8 +8,6 @@ import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
 import com.example.veditor.core.model.VideoClip
-import com.example.veditor.feature.editor.EditorPresenter
-import com.example.veditor.feature.editor.EditorUi
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -32,7 +30,7 @@ class EditorUiTest {
     }
 
     @Test
-    fun selectOverlay_opensSheet() {
+    fun given_timeline_when_select_overlay_then_sheet_opens() {
         composeTestRule.onNodeWithTag("btn_add_sticker").performClick()
         composeTestRule.onNodeWithTag("sheet_btn_confirm").performClick()
         composeTestRule.runOnIdle {
@@ -43,7 +41,7 @@ class EditorUiTest {
     }
 
     @Test
-    fun dragOverlay_movesRange() {
+    fun given_selected_overlay_when_update_time_then_sheet_visible() {
         composeTestRule.onNodeWithTag("btn_add_sticker").performClick()
         composeTestRule.onNodeWithTag("sheet_btn_confirm").performClick()
         composeTestRule.runOnIdle {
@@ -56,7 +54,7 @@ class EditorUiTest {
     }
 
     @Test
-    fun deleteSelectedOverlay_removesOverlay() {
+    fun given_selected_overlay_when_delete_then_removed() {
         composeTestRule.onNodeWithTag("btn_add_sticker").performClick()
         composeTestRule.onNodeWithTag("sheet_btn_confirm").performClick()
         composeTestRule.runOnIdle {
@@ -70,3 +68,5 @@ class EditorUiTest {
         }
     }
 }
+
+
