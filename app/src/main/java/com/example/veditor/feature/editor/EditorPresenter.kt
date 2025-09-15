@@ -60,6 +60,7 @@ class EditorPresenter(
                 volumePercent = 100,
                 startMs = 0L,
                 durationMs = 1_000L,
+                sourceUri = null,
             ),
         )
     }
@@ -97,9 +98,14 @@ class EditorPresenter(
         _state.value = _state.value.copy(overlayDraft = current.copy(text = text))
     }
 
-    fun updateMusicDraft(volumePercent: Int) {
+    fun updateMusicDraft(volumePercent: Int? = null, sourceUri: String? = null) {
         val current = _state.value.overlayDraft as? OverlayDraft.Music ?: return
-        _state.value = _state.value.copy(overlayDraft = current.copy(volumePercent = volumePercent))
+        _state.value = _state.value.copy(
+            overlayDraft = current.copy(
+                volumePercent = volumePercent ?: current.volumePercent,
+                sourceUri = sourceUri ?: current.sourceUri,
+            ),
+        )
     }
 
     fun updateOverlayTime(startMs: Long? = null, durationMs: Long? = null) {
@@ -165,7 +171,7 @@ class EditorPresenter(
             is OverlayDraft.Music -> Overlay.Music(
                 id = generateOverlayId(),
                 timeRange = placeRange,
-                sourceUri = "", // MVP placeholder
+                sourceUri = draft.sourceUri ?: "",
                 volumePercent = draft.volumePercent,
             )
         }
@@ -201,6 +207,7 @@ sealed class OverlayDraft {
 
     data class Music(
         val volumePercent: Int,
+        val sourceUri: String?,
         val startMs: Long,
         val durationMs: Long,
     ) : OverlayDraft()

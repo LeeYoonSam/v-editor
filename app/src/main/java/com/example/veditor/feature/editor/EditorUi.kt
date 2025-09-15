@@ -39,6 +39,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
@@ -76,7 +79,7 @@ private fun EditorContent(
     onConfirmOverlay: () -> Unit,
     onUpdateSticker: (assetId: String?, x: Float?, y: Float?, scale: Float?, rotationDeg: Float?) -> Unit,
     onUpdateSubtitle: (text: String) -> Unit,
-    onUpdateMusic: (volumePercent: Int) -> Unit,
+    onUpdateMusic: (volumePercent: Int? , sourceUri: String?) -> Unit,
     // time controls
     onUpdateTime: (startMs: Long?, durationMs: Long?) -> Unit = { _, _ -> },
 ) {
@@ -125,6 +128,8 @@ private fun EditorContent(
                         Slider(value = draft?.y ?: 0.5f, onValueChange = { onUpdateSticker(null, null, it, null, null) }, valueRange = 0f..1f)
                         Text("Scale")
                         Slider(value = draft?.scale ?: 1f, onValueChange = { onUpdateSticker(null, null, null, it, null) }, valueRange = 0.5f..2f)
+                        Text("Rotation")
+                        Slider(value = draft?.rotationDeg ?: 0f, onValueChange = { onUpdateSticker(null, null, null, null, it) }, valueRange = -180f..180f)
                         Text("Start (ms): ${draft?.startMs ?: 0}")
                         Slider(value = (draft?.startMs ?: 0).toFloat(), onValueChange = { onUpdateTime(it.toLong(), null) }, valueRange = 0f..(state.timeline?.clips?.lastOrNull()?.range?.endMs?.value?.toFloat() ?: 0f))
                         Text("Duration (ms): ${draft?.durationMs ?: 1000}")
@@ -161,9 +166,15 @@ private fun EditorContent(
                         Text("Volume: ${draft?.volumePercent ?: 100}")
                         Slider(
                             value = (draft?.volumePercent ?: 100).toFloat(),
-                            onValueChange = { onUpdateMusic(it.toInt()) },
+                            onValueChange = { onUpdateMusic(it.toInt(), null) },
                             valueRange = 0f..100f,
                         )
+                        val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                            if (uri != null) onUpdateMusic(null, uri.toString())
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { picker.launch("audio/*") }) { Text("오디오 선택") }
+                        }
                         Text("Start (ms): ${draft?.startMs ?: 0}")
                         Slider(value = (draft?.startMs ?: 0).toFloat(), onValueChange = { onUpdateTime(it.toLong(), null) }, valueRange = 0f..(state.timeline?.clips?.lastOrNull()?.range?.endMs?.value?.toFloat() ?: 0f))
                         Text("Duration (ms): ${draft?.durationMs ?: 1000}")
@@ -375,7 +386,7 @@ private fun EditorPreview_Timeline() {
         onConfirmOverlay = {},
         onUpdateSticker = { _, _, _, _, _ -> },
         onUpdateSubtitle = { _ -> },
-        onUpdateMusic = { _ -> },
+        onUpdateMusic = { _, _ -> },
         onUpdateTime = { _, _ -> },
     )
 }
