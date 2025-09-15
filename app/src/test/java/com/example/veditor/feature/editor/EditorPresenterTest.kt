@@ -42,6 +42,7 @@ class EditorPresenterTest {
         val presenter = EditorPresenter(initialTimeline = timeline)
 
         presenter.onAddStickerClicked()
+        presenter.updateStickerDraft(x = 0.7f, y = 0.2f, assetId = null, scale = null, rotationDeg = null)
         presenter.confirmOverlay()
 
         val state = presenter.state.value
@@ -50,5 +51,3 @@ class EditorPresenterTest {
         assertEquals(null, state.overlayDraft)
     }
 }
-
-

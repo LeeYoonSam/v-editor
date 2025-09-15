@@ -49,7 +49,7 @@ MVP 단계에서 서버 없이(클라이언트 전용) 구현합니다. 모든 �
 - [x] D2. 에디터 스크린(Screen/Presenter/Ui) – 타임라인/오버레이 팔레트/프리뷰
 - [x] D2a. 에디터 빈 상태 UX(Import CTA)
 - [x] D2b. Import→Editor 결과 전달 및 연결
-- [~] D3. 오버레이 선택/속성 편집 시트(Overlay/Sheet) – 시트 골격/드래프트/확인/취소
+- [~] D3. 오버레이 선택/속성 편집 시트(Overlay/Sheet) – 시트 골격/드래프트/확인/취소 + UI 입력 연동
 
 ### E. 테스트
 - [x] E1. Presenter 유닛 테스트 템플릿 구축
