@@ -12,5 +12,3 @@ class GetDeviceVideosUseCase(
 ) {
     operator fun invoke(): Flow<List<DeviceVideo>> = mediaRepository.listDeviceVideos()
 }
-
-

@@ -19,5 +19,3 @@ class HomePresenter(
             initialValue = HomeState(videos = emptyList()),
         )
 }
-
-

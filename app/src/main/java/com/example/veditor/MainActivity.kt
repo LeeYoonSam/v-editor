@@ -9,10 +9,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import com.example.veditor.core.domain.BuildTimelineFromSelectionUseCase
 import com.example.veditor.core.domain.GetDeviceVideosUseCase
 import com.example.veditor.core.media.DeviceVideo
@@ -47,7 +43,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun App() {
-
     val repo = FakeMediaRepository(
         listOf(
             DeviceVideo("content://1", "샘플1", TimeMs(1_000)),

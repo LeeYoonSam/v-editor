@@ -26,5 +26,3 @@ class GetDeviceVideosUseCaseTest {
         assertEquals("v1", first.first().displayName)
     }
 }
-
-

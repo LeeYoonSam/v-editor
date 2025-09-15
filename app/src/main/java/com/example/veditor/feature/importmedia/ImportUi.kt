@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -43,12 +43,7 @@ fun ImportUi(presenter: ImportPresenter, onConfirm: (selectedUris: List<String>)
 }
 
 @Composable
-private fun ImportContent(
-    state: ImportState,
-    onToggle: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onClose: () -> Unit,
-) {
+private fun ImportContent(state: ImportState, onToggle: (String) -> Unit, onConfirm: () -> Unit, onClose: () -> Unit) {
     Scaffold(
         topBar = { ImportTopBar(onClose = onClose) },
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -99,7 +94,7 @@ private fun ImportBottomBar(selectedCount: Int, onConfirm: () -> Unit) {
             .padding(12.dp),
     ) {
         Button(onClick = onConfirm, enabled = selectedCount > 0, modifier = Modifier.align(Alignment.Center)) {
-            Text("가져오기(${selectedCount})")
+            Text("가져오기($selectedCount)")
         }
     }
 }
@@ -117,5 +112,3 @@ private fun ImportGridItem(video: DeviceVideo, isSelected: Boolean, onClick: () 
         Text(text = video.displayName, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-

@@ -57,9 +57,12 @@ private fun EditorContent(
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { innerPadding ->
         if (state.timeline == null) {
-            EmptyEditor(onImport = onImport, modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding))
+            EmptyEditor(
+                onImport = onImport,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
         } else {
             Column(
                 modifier = Modifier
@@ -114,7 +117,7 @@ private fun PreviewArea() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-        .height(200.dp)
+            .height(200.dp)
             .background(Color.Black.copy(alpha = 0.8f)),
         contentAlignment = Alignment.Center,
     ) {
@@ -166,8 +169,10 @@ private fun EditorPreview_Timeline() {
     val timeline = Timeline(listOf(clip), emptyList())
     EditorContent(
         state = EditorState(timeline = timeline),
-        onAddSticker = {}, onAddSubtitle = {}, onAddMusic = {}, onExport = {}, onImport = {},
+        onAddSticker = {},
+        onAddSubtitle = {},
+        onAddMusic = {},
+        onExport = {},
+        onImport = {},
     )
 }
-
-

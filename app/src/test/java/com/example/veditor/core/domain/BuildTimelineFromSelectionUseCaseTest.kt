@@ -25,5 +25,3 @@ class BuildTimelineFromSelectionUseCaseTest {
         assertEquals(first.endMs.value, second.startMs.value)
     }
 }
-
-

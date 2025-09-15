@@ -13,6 +13,7 @@ lifecycle = "2.8.4"
 coroutines = "1.9.0"
 circuit = "0.30.0"
 spotless = "6.25.0"
+turbine = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +37,10 @@ androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifec
 
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+
+# Testing
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 # Circuit
 circuit-runtime = { group = "com.slack.circuit", name = "circuit-runtime", version.ref = "circuit" }

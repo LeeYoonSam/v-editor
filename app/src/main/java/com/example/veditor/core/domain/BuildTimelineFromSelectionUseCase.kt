@@ -28,5 +28,3 @@ class BuildTimelineFromSelectionUseCase(
         return Timeline(clips = clips, overlays = emptyList())
     }
 }
-
-

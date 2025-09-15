@@ -34,5 +34,3 @@ class MediaRepositoryTest {
         assertEquals(range, clip.range)
     }
 }
-
-

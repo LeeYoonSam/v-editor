@@ -28,8 +28,10 @@ class FakeMediaRepository(
     override fun listDeviceVideos(): Flow<List<DeviceVideo>> = flow { emit(videos) }
 
     override suspend fun buildClipFromSource(sourceUri: String, range: TimeRange): VideoClip {
-        return VideoClip(id = "clip_${sourceUri.hashCode()}_${range.startMs.value}", sourceUri = sourceUri, range = range)
+        return VideoClip(
+            id = "clip_${sourceUri.hashCode()}_${range.startMs.value}",
+            sourceUri = sourceUri,
+            range = range,
+        )
     }
 }
-
-

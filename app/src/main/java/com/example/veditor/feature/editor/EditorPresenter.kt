@@ -33,5 +33,3 @@ class EditorPresenter(
         _state.value = _state.value.copy(timeline = timeline)
     }
 }
-
-
