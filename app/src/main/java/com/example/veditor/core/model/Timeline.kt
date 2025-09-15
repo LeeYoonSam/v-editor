@@ -22,7 +22,7 @@ data class Timeline(
     init {
         require(clips.isNotEmpty()) { "timeline requires at least one clip" }
         require(!hasOverlap(clips.map { it.range })) { "clip ranges must not overlap" }
-        require(!hasOverlap(overlays.map { it.timeRange })) { "overlay ranges must not overlap" }
+        // Overlays are allowed to overlap in time by design
     }
 
     private fun hasOverlap(ranges: List<TimeRange>): Boolean {

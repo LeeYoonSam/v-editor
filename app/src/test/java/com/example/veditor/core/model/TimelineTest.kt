@@ -26,16 +26,16 @@ class TimelineTest {
         }
     }
 
+    // Overlays can overlap now; ensure it's allowed
     @Test
-    fun given_overlapping_overlay_ranges_when_create_timeline_then_throws() {
+    fun given_overlapping_overlay_ranges_when_create_timeline_then_allowed() {
         val baseClipRange = TimeRange(TimeMs(0), TimeMs(1000))
         val overlappingOverlayRange = TimeRange(TimeMs(500), TimeMs(1500))
         val baseClip = VideoClip("baseClip", "uri://clip", baseClipRange)
-        val firstSubtitle = Overlay.Subtitle("subtitle1", baseClipRange, "hello")
-        val overlappingSubtitle = Overlay.Subtitle("subtitle2", overlappingOverlayRange, "world")
-        assertThrows(IllegalArgumentException::class.java) {
-            Timeline(clips = listOf(baseClip), overlays = listOf(firstSubtitle, overlappingSubtitle))
-        }
+        val firstSubtitle = Overlay.Subtitle("subtitle1", baseClipRange, "hello", x = 0.5f, y = 0.9f, textSizeSp = 16f, colorArgb = 0xFFFFFFFF)
+        val overlappingSubtitle = Overlay.Subtitle("subtitle2", overlappingOverlayRange, "world", x = 0.5f, y = 0.8f, textSizeSp = 16f, colorArgb = 0xFFFFFFFF)
+        val timeline = Timeline(clips = listOf(baseClip), overlays = listOf(firstSubtitle, overlappingSubtitle))
+        assertEquals(2, timeline.overlays.size)
     }
 
     @Test

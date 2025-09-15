@@ -42,11 +42,19 @@ sealed class Overlay {
      * @param id unique id
      * @param timeRange visibility window
      * @param text subtitle text
+     * @param x normalized x [0,1]
+     * @param y normalized y [0,1]
+     * @param textSizeSp font size in sp
+     * @param colorArgb packed ARGB color (0xAARRGGBB)
      */
     data class Subtitle(
         override val id: String,
         override val timeRange: TimeRange,
         val text: String,
+        val x: Float,
+        val y: Float,
+        val textSizeSp: Float,
+        val colorArgb: Long,
     ) : Overlay()
 
     /** Background music segment.

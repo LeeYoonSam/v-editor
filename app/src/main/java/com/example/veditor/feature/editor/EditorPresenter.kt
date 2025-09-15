@@ -50,6 +50,10 @@ class EditorPresenter(
                 text = "",
                 startMs = 0L,
                 durationMs = 1_000L,
+                x = 0.5f,
+                y = 0.8f,
+                textSizeSp = 18f,
+                colorArgb = 0xFFFFFFFF,
             ),
         )
     }
@@ -96,6 +100,26 @@ class EditorPresenter(
     fun updateSubtitleDraft(text: String) {
         val current = _state.value.overlayDraft as? OverlayDraft.Subtitle ?: return
         _state.value = _state.value.copy(overlayDraft = current.copy(text = text))
+    }
+
+    fun updateSubtitlePosition(x: Float? = null, y: Float? = null) {
+        val current = _state.value.overlayDraft as? OverlayDraft.Subtitle ?: return
+        _state.value = _state.value.copy(
+            overlayDraft = current.copy(
+                x = (x ?: current.x).coerceIn(0f, 1f),
+                y = (y ?: current.y).coerceIn(0f, 1f),
+            ),
+        )
+    }
+
+    fun updateSubtitleStyle(textSizeSp: Float? = null, colorArgb: Long? = null) {
+        val current = _state.value.overlayDraft as? OverlayDraft.Subtitle ?: return
+        _state.value = _state.value.copy(
+            overlayDraft = current.copy(
+                textSizeSp = (textSizeSp ?: current.textSizeSp).coerceIn(8f, 72f),
+                colorArgb = colorArgb ?: current.colorArgb,
+            ),
+        )
     }
 
     fun updateMusicDraft(volumePercent: Int? = null, sourceUri: String? = null) {
@@ -149,10 +173,6 @@ class EditorPresenter(
         if (end <= start) return
         val placeRange = TimeRange(TimeMs(start), TimeMs(end))
 
-        // 기존 오버레이와 겹치면 추가하지 않음
-        val overlaps = currentTimeline.overlays.any { it.timeRange.overlaps(placeRange) }
-        if (overlaps) return
-
         val newOverlay: Overlay = when (draft) {
             is OverlayDraft.Sticker -> Overlay.Sticker(
                 id = generateOverlayId(),
@@ -167,6 +187,10 @@ class EditorPresenter(
                 id = generateOverlayId(),
                 timeRange = placeRange,
                 text = draft.text,
+                x = draft.x,
+                y = draft.y,
+                textSizeSp = draft.textSizeSp,
+                colorArgb = draft.colorArgb,
             )
             is OverlayDraft.Music -> Overlay.Music(
                 id = generateOverlayId(),
@@ -177,6 +201,28 @@ class EditorPresenter(
         }
         val updated = currentTimeline.copy(overlays = currentTimeline.overlays + newOverlay)
         _state.value = _state.value.copy(timeline = updated, overlaySheet = null, overlayDraft = null)
+    }
+
+    fun updateOverlayTimeById(overlayId: String, startMs: Long? = null, durationMs: Long? = null) {
+        val currentTimeline = _state.value.timeline ?: return
+        val tlEnd = currentTimeline.clips.lastOrNull()?.range?.endMs?.value ?: return
+        val idx = currentTimeline.overlays.indexOfFirst { it.id == overlayId }
+        if (idx == -1) return
+        val target = currentTimeline.overlays[idx]
+        val curStart = target.timeRange.startMs.value
+        val curDur = target.timeRange.endMs.value - curStart
+        val newStart = (startMs ?: curStart).coerceIn(0L, tlEnd)
+        val newEnd = (newStart + (durationMs ?: curDur)).coerceAtMost(tlEnd)
+        if (newEnd <= newStart) return
+        val newRange = TimeRange(TimeMs(newStart), TimeMs(newEnd))
+        val updatedOverlay = when (target) {
+            is Overlay.Sticker -> target.copy(timeRange = newRange)
+            is Overlay.Subtitle -> target.copy(timeRange = newRange)
+            is Overlay.Music -> target.copy(timeRange = newRange)
+        }
+        val newList = currentTimeline.overlays.toMutableList()
+        newList[idx] = updatedOverlay
+        _state.value = _state.value.copy(timeline = currentTimeline.copy(overlays = newList))
     }
 
     private fun generateOverlayId(): String = "ov_" + System.currentTimeMillis()
@@ -203,6 +249,10 @@ sealed class OverlayDraft {
         val text: String,
         val startMs: Long,
         val durationMs: Long,
+        val x: Float,
+        val y: Float,
+        val textSizeSp: Float,
+        val colorArgb: Long,
     ) : OverlayDraft()
 
     data class Music(
