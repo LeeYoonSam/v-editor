@@ -1,10 +1,10 @@
 package com.example.veditor.feature.editor
 
+import com.example.veditor.core.model.Overlay
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
 import com.example.veditor.core.model.VideoClip
-import com.example.veditor.core.model.Overlay
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

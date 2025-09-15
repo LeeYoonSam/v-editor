@@ -248,7 +248,12 @@ class EditorPresenter(
             )
         }
         val updated = currentTimeline.copy(overlays = currentTimeline.overlays + newOverlay)
-        _state.value = _state.value.copy(timeline = updated, overlaySheet = null, overlayDraft = null, selectedOverlayId = newOverlay.id)
+        _state.value = _state.value.copy(
+            timeline = updated,
+            overlaySheet = null,
+            overlayDraft = null,
+            selectedOverlayId = newOverlay.id,
+        )
     }
 
     fun editOverlay(overlayId: String) {

@@ -3,14 +3,15 @@ package com.example.veditor.core.domain
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
-import com.example.veditor.core.model.VideoClip
 
 /** 특정 클립의 범위를 원본 범위 내에서 조정한다. */
 class TrimClipUseCase {
     operator fun invoke(timeline: Timeline, clipIndex: Int, newRange: TimeRange): Timeline {
         require(clipIndex in timeline.clips.indices) { "invalid clip index" }
         val original = timeline.clips[clipIndex]
-        require(newRange.startMs.value >= original.range.startMs.value && newRange.endMs.value <= original.range.endMs.value) {
+        require(
+            newRange.startMs.value >= original.range.startMs.value && newRange.endMs.value <= original.range.endMs.value,
+        ) {
             "newRange must be within original clip range"
         }
         // 인접 클립과의 겹침을 방지
@@ -33,7 +34,9 @@ class SplitClipUseCase {
     operator fun invoke(timeline: Timeline, clipIndex: Int, splitAt: TimeMs): Timeline {
         require(clipIndex in timeline.clips.indices) { "invalid clip index" }
         val target = timeline.clips[clipIndex]
-        require(splitAt.value > target.range.startMs.value && splitAt.value < target.range.endMs.value) { "splitAt must be inside clip" }
+        require(splitAt.value > target.range.startMs.value && splitAt.value < target.range.endMs.value) {
+            "splitAt must be inside clip"
+        }
 
         val first = target.copy(
             id = target.id + "_a",
@@ -75,5 +78,3 @@ class MergeAdjacentClipsUseCase {
         return timeline.copy(clips = newClips)
     }
 }
-
-

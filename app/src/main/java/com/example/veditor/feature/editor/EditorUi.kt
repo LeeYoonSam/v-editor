@@ -110,7 +110,7 @@ private fun EditorContent(
     onConfirmOverlay: () -> Unit,
     onUpdateSticker: (assetId: String?, x: Float?, y: Float?, scale: Float?, rotationDeg: Float?) -> Unit,
     onUpdateSubtitle: (text: String) -> Unit,
-    onUpdateMusic: (volumePercent: Int? , sourceUri: String?) -> Unit,
+    onUpdateMusic: (volumePercent: Int?, sourceUri: String?) -> Unit,
     // time controls
     onUpdateTime: (startMs: Long?, durationMs: Long?) -> Unit = { _, _ -> },
     onUpdateTimeForOverlay: (overlayId: String, startMs: Long?, endMs: Long?) -> Unit = { _, _, _ -> },
@@ -158,7 +158,6 @@ private fun EditorContent(
                     selectedOverlayId = state.selectedOverlayId,
                     onClickOverlay = { id -> onEditOverlay(id) },
                 )
-                
             }
         }
 
@@ -166,14 +165,26 @@ private fun EditorContent(
             is EditorOverlaySheet.Sticker -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
                     val draft = state.overlayDraft as? OverlayDraft.Sticker
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp).testTag("sheet_sticker")) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(16.dp).testTag("sheet_sticker"),
+                    ) {
                         Text("Sticker settings")
                         StickerAssetGrid(onSelect = { id -> onUpdateSticker(id, null, null, null, null) })
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onCloseSheet, modifier = Modifier.testTag("sheet_btn_cancel")) { Text("취소") }
-                            TextButton(onClick = onConfirmOverlay, modifier = Modifier.testTag("sheet_btn_confirm")) { Text("확인") }
+                            TextButton(
+                                onClick = onCloseSheet,
+                                modifier = Modifier.testTag("sheet_btn_cancel"),
+                            ) { Text("취소") }
+                            TextButton(
+                                onClick = onConfirmOverlay,
+                                modifier = Modifier.testTag("sheet_btn_confirm"),
+                            ) { Text("확인") }
                             if (state.selectedOverlayId != null) {
-                                TextButton(onClick = onDeleteSelectedOverlay, modifier = Modifier.testTag("sheet_btn_delete")) { Text("삭제") }
+                                TextButton(
+                                    onClick = onDeleteSelectedOverlay,
+                                    modifier = Modifier.testTag("sheet_btn_delete"),
+                                ) { Text("삭제") }
                             }
                         }
                     }
@@ -182,25 +193,38 @@ private fun EditorContent(
             is EditorOverlaySheet.Subtitle -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
                     val draft = state.overlayDraft as? OverlayDraft.Subtitle
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp).testTag("sheet_subtitle")) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(16.dp).testTag("sheet_subtitle"),
+                    ) {
                         Text("Subtitle settings")
                         TextField(value = draft?.text ?: "", onValueChange = onUpdateSubtitle, label = { Text("Text") })
                         Text("Color")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(0xFFFFFFFF, 0xFFFF0000, 0xFF00FF00, 0xFF0000FF).forEach { c ->
-                                Box(modifier = Modifier
-                                    .width(32.dp)
-                                    .height(24.dp)
-                                    .background(Color((c and 0xFFFFFFFF).toInt()))
-                                    .clickable { onUpdateSubtitleStyle(null, c) }
+                                Box(
+                                    modifier = Modifier
+                                        .width(32.dp)
+                                        .height(24.dp)
+                                        .background(Color((c and 0xFFFFFFFF).toInt()))
+                                        .clickable { onUpdateSubtitleStyle(null, c) },
                                 )
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onCloseSheet, modifier = Modifier.testTag("sheet_btn_cancel")) { Text("취소") }
-                            TextButton(onClick = onConfirmOverlay, modifier = Modifier.testTag("sheet_btn_confirm")) { Text("확인") }
+                            TextButton(
+                                onClick = onCloseSheet,
+                                modifier = Modifier.testTag("sheet_btn_cancel"),
+                            ) { Text("취소") }
+                            TextButton(
+                                onClick = onConfirmOverlay,
+                                modifier = Modifier.testTag("sheet_btn_confirm"),
+                            ) { Text("확인") }
                             if (state.selectedOverlayId != null) {
-                                TextButton(onClick = onDeleteSelectedOverlay, modifier = Modifier.testTag("sheet_btn_delete")) { Text("삭제") }
+                                TextButton(
+                                    onClick = onDeleteSelectedOverlay,
+                                    modifier = Modifier.testTag("sheet_btn_delete"),
+                                ) { Text("삭제") }
                             }
                         }
                     }
@@ -209,7 +233,10 @@ private fun EditorContent(
             is EditorOverlaySheet.Music -> {
                 ModalBottomSheet(onDismissRequest = onCloseSheet) {
                     val draft = state.overlayDraft as? OverlayDraft.Music
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp).testTag("sheet_music")) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(16.dp).testTag("sheet_music"),
+                    ) {
                         Text("Music settings")
                         Text("Volume: ${draft?.volumePercent ?: 100}")
                         Slider(
@@ -217,17 +244,27 @@ private fun EditorContent(
                             onValueChange = { onUpdateMusic(it.toInt(), null) },
                             valueRange = 0f..100f,
                         )
-                        val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-                            if (uri != null) onUpdateMusic(null, uri.toString())
-                        }
+                        val picker =
+                            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                                if (uri != null) onUpdateMusic(null, uri.toString())
+                            }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { picker.launch("audio/*") }) { Text("오디오 선택") }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onCloseSheet, modifier = Modifier.testTag("sheet_btn_cancel")) { Text("취소") }
-                            TextButton(onClick = onConfirmOverlay, modifier = Modifier.testTag("sheet_btn_confirm")) { Text("확인") }
+                            TextButton(
+                                onClick = onCloseSheet,
+                                modifier = Modifier.testTag("sheet_btn_cancel"),
+                            ) { Text("취소") }
+                            TextButton(
+                                onClick = onConfirmOverlay,
+                                modifier = Modifier.testTag("sheet_btn_confirm"),
+                            ) { Text("확인") }
                             if (state.selectedOverlayId != null) {
-                                TextButton(onClick = onDeleteSelectedOverlay, modifier = Modifier.testTag("sheet_btn_delete")) { Text("삭제") }
+                                TextButton(
+                                    onClick = onDeleteSelectedOverlay,
+                                    modifier = Modifier.testTag("sheet_btn_delete"),
+                                ) { Text("삭제") }
                             }
                         }
                     }
@@ -313,7 +350,7 @@ private fun PreviewArea(
                                     val newY = clamp01(((posY + dragAmount.y) / boxHeightPx).toFloat())
                                     onDragSticker(newX, newY)
                                 }
-                            }
+                            },
                     )
                 }
             }
@@ -365,7 +402,12 @@ private fun PreviewArea(
                             "party" -> Icons.Filled.Celebration
                             else -> Icons.Filled.Star
                         }
-                        Icon(icon, contentDescription = o.assetId, tint = Color.White, modifier = Modifier.align(Alignment.Center))
+                        Icon(
+                            icon,
+                            contentDescription = o.assetId,
+                            tint = Color.White,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
                     }
                 }
                 is Overlay.Subtitle -> {
@@ -375,7 +417,10 @@ private fun PreviewArea(
                         text = o.text,
                         color = Color((o.colorArgb and 0xFFFFFFFF).toInt()),
                         fontSize = o.textSizeSp.sp,
-                        modifier = Modifier.padding(start = with(density) { px.toDp() }, top = with(density) { py.toDp() }),
+                        modifier = Modifier.padding(
+                            start = with(density) { px.toDp() },
+                            top = with(density) { py.toDp() },
+                        ),
                     )
                 }
                 is Overlay.Music -> {
@@ -519,23 +564,30 @@ private fun OverlayList(
                             .background(trackColor)
                             .then(if (isSelected) Modifier.border(2.dp, Color(0xFFFFD54F)) else Modifier)
                             .then(
-                                if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
-                                    var accumulated by androidx.compose.runtime.mutableStateOf(0f)
-                                    val widthPx = endPx - startPx
-                                    detectDragGestures(
-                                        onDragStart = { accumulated = 0f },
-                                        onDrag = { change, drag ->
-                                            change.consume()
-                                            accumulated += drag.x
-                                            val newStartPx = (startPx + accumulated).coerceIn(0f, timelineWidthPx - widthPx)
-                                            val newEndPx = (newStartPx + widthPx).coerceIn(widthPx, timelineWidthPx)
-                                            val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
-                                            val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
-                                            onDragStartHandle(ov.id, newStartMs)
-                                            onDragEndHandle(ov.id, newEndMs)
-                                        },
-                                    )
-                                } else Modifier
+                                if (isSelected) {
+                                    Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
+                                        var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                                        val widthPx = endPx - startPx
+                                        detectDragGestures(
+                                            onDragStart = { accumulated = 0f },
+                                            onDrag = { change, drag ->
+                                                change.consume()
+                                                accumulated += drag.x
+                                                val newStartPx = (startPx + accumulated).coerceIn(
+                                                    0f,
+                                                    timelineWidthPx - widthPx,
+                                                )
+                                                val newEndPx = (newStartPx + widthPx).coerceIn(widthPx, timelineWidthPx)
+                                                val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                                val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                                onDragStartHandle(ov.id, newStartMs)
+                                                onDragEndHandle(ov.id, newEndMs)
+                                            },
+                                        )
+                                    }
+                                } else {
+                                    Modifier
+                                },
                             )
                             .testTag("overlay_range_${ov.id}")
                             .testTag("overlay_range")
@@ -551,19 +603,23 @@ private fun OverlayList(
                             .align(Alignment.CenterStart)
                             .background(Color.Transparent)
                             .then(
-                                if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
-                                    var accumulated by androidx.compose.runtime.mutableStateOf(0f)
-                                    detectDragGestures(
-                                        onDragStart = { accumulated = 0f },
-                                        onDrag = { change, drag ->
-                                            change.consume()
-                                            accumulated += drag.x
-                                            val newStartPx = (startPx + accumulated).coerceIn(0f, endPx - 8f)
-                                            val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
-                                            onDragStartHandle(ov.id, newStartMs)
-                                        },
-                                    )
-                                } else Modifier
+                                if (isSelected) {
+                                    Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
+                                        var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                                        detectDragGestures(
+                                            onDragStart = { accumulated = 0f },
+                                            onDrag = { change, drag ->
+                                                change.consume()
+                                                accumulated += drag.x
+                                                val newStartPx = (startPx + accumulated).coerceIn(0f, endPx - 8f)
+                                                val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                                onDragStartHandle(ov.id, newStartMs)
+                                            },
+                                        )
+                                    }
+                                } else {
+                                    Modifier
+                                },
                             )
                             .testTag("overlay_handle_start_${ov.id}")
                             .testTag("overlay_handle_start"),
@@ -577,19 +633,26 @@ private fun OverlayList(
                             .align(Alignment.CenterStart)
                             .background(Color.Transparent)
                             .then(
-                                if (isSelected) Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
-                                    var accumulated by androidx.compose.runtime.mutableStateOf(0f)
-                                    detectDragGestures(
-                                        onDragStart = { accumulated = 0f },
-                                        onDrag = { change, drag ->
-                                            change.consume()
-                                            accumulated += drag.x
-                                            val newEndPx = (endPx + accumulated).coerceIn(startPx + 8f, timelineWidthPx)
-                                            val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
-                                            onDragEndHandle(ov.id, newEndMs)
-                                        },
-                                    )
-                                } else Modifier
+                                if (isSelected) {
+                                    Modifier.pointerInput(ov.id, timelineWidthPx, startPx, endPx) {
+                                        var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                                        detectDragGestures(
+                                            onDragStart = { accumulated = 0f },
+                                            onDrag = { change, drag ->
+                                                change.consume()
+                                                accumulated += drag.x
+                                                val newEndPx = (endPx + accumulated).coerceIn(
+                                                    startPx + 8f,
+                                                    timelineWidthPx,
+                                                )
+                                                val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                                onDragEndHandle(ov.id, newEndMs)
+                                            },
+                                        )
+                                    }
+                                } else {
+                                    Modifier
+                                },
                             )
                             .testTag("overlay_handle_end_${ov.id}")
                             .testTag("overlay_handle_end"),
@@ -599,7 +662,6 @@ private fun OverlayList(
         }
     }
 }
-
 
 @Preview(showSystemUi = true)
 @Composable

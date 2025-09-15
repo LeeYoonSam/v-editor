@@ -13,6 +13,8 @@ spotless {
             mapOf(
                 "indent_size" to "4",
                 "continuation_indent_size" to "4",
+                // Ktlint 1.x: disable long lines (Compose often exceeds 120 chars)
+                "ktlint_standard_max-line-length" to "disabled",
                 "disabled_rules" to "filename",
                 // Allow PascalCase for Composable/Preview functions
                 "ktlint_function_naming_ignore_when_annotated_with" to "Composable,Preview",
@@ -27,6 +29,7 @@ spotless {
             mapOf(
                 "indent_size" to "4",
                 "continuation_indent_size" to "4",
+                "ktlint_standard_max-line-length" to "disabled",
             ),
         )
         trimTrailingWhitespace()

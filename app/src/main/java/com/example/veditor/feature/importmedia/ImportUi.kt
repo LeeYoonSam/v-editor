@@ -9,8 +9,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,7 +55,13 @@ fun ImportUi(presenter: ImportPresenter, onConfirm: (selectedUris: List<String>)
 }
 
 @Composable
-private fun ImportContent(state: ImportState, onToggle: (String) -> Unit, onConfirm: () -> Unit, onPickFromSystem: () -> Unit, onClose: () -> Unit) {
+private fun ImportContent(
+    state: ImportState,
+    onToggle: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onPickFromSystem: () -> Unit,
+    onClose: () -> Unit,
+) {
     Scaffold(
         topBar = { ImportTopBar(onClose = onClose) },
         contentWindowInsets = WindowInsets.safeDrawing,
