@@ -36,12 +36,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +57,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -63,6 +68,10 @@ import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
 import com.example.veditor.core.model.VideoClip
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.delay
 
 @Composable
 fun EditorUi(presenter: EditorPresenter) {
@@ -82,6 +91,9 @@ fun EditorUi(presenter: EditorPresenter) {
         onUpdateTime = presenter::updateOverlayTime,
         onUpdateSubtitleStyle = presenter::updateSubtitleStyle,
         onUpdateSubtitlePosition = presenter::updateSubtitlePosition,
+        onPlayPause = presenter::setPlaying,
+        onSeek = presenter::seekTo,
+        onPlaybackTick = presenter::onPlaybackPosition,
         onUpdateTimeForOverlay = { id, start, end ->
             val tlEnd = presenter.state.value.timeline?.clips?.lastOrNull()?.range?.endMs?.value ?: 0L
             val current = presenter.state.value.timeline?.overlays?.firstOrNull { it.id == id }
@@ -119,6 +131,9 @@ private fun EditorContent(
     onUpdateSubtitlePosition: (x: Float?, y: Float?) -> Unit = { _, _ -> },
     onEditOverlay: (overlayId: String) -> Unit = {},
     onDeleteSelectedOverlay: () -> Unit = {},
+    onPlayPause: (Boolean) -> Unit = {},
+    onSeek: (Long) -> Unit = {},
+    onPlaybackTick: (Long) -> Unit = {},
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -142,8 +157,20 @@ private fun EditorContent(
                     timeline = state.timeline,
                     overlaySheet = state.overlaySheet,
                     overlayDraft = state.overlayDraft,
+                    isPlaying = state.isPlaying,
+                    currentPositionMs = state.currentPositionMs,
+                    onPlaybackTick = onPlaybackTick,
                     onDragSticker = { x, y -> onUpdateSticker(null, x, y, null, null) },
                     onDragSubtitle = { x, y -> onUpdateSubtitlePosition(x, y) },
+                )
+                VideoControls(
+                    isPlaying = state.isPlaying,
+                    onPlayPause = onPlayPause,
+                )
+                TimelineProgressBar(
+                    timeline = state.timeline,
+                    currentPositionMs = state.currentPositionMs,
+                    onSeek = { pos -> onSeek(pos) },
                 )
                 OverlayPalette(
                     onAddSticker = onAddSticker,
@@ -157,6 +184,7 @@ private fun EditorContent(
                     onDragEndHandle = { id, newEnd -> onUpdateTimeForOverlay(id, null, newEnd) },
                     selectedOverlayId = state.selectedOverlayId,
                     onClickOverlay = { id -> onEditOverlay(id) },
+                    currentPositionMs = state.currentPositionMs,
                 )
             }
         }
@@ -309,6 +337,9 @@ private fun PreviewArea(
     timeline: Timeline?,
     overlaySheet: EditorOverlaySheet?,
     overlayDraft: OverlayDraft?,
+    isPlaying: Boolean,
+    currentPositionMs: Long,
+    onPlaybackTick: (Long) -> Unit,
     onDragSticker: (x: Float, y: Float) -> Unit,
     onDragSubtitle: (x: Float, y: Float) -> Unit,
 ) {
@@ -328,7 +359,40 @@ private fun PreviewArea(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = "Preview", color = Color.White)
+        val context = LocalContext.current
+        val player = remember {
+            ExoPlayer.Builder(context).build()
+        }
+        DisposableEffect(Unit) {
+            onDispose { player.release() }
+        }
+        val firstClip = timeline?.clips?.firstOrNull()
+        if (firstClip != null) {
+            LaunchedEffect(firstClip.sourceUri) {
+                player.setMediaItem(MediaItem.fromUri(firstClip.sourceUri))
+                player.prepare()
+            }
+            LaunchedEffect(isPlaying) {
+                player.playWhenReady = isPlaying
+            }
+            LaunchedEffect(currentPositionMs) {
+                if (!isPlaying) player.seekTo(currentPositionMs)
+            }
+            LaunchedEffect(isPlaying) {
+                while (isPlaying) {
+                    onPlaybackTick(player.currentPosition)
+                    delay(100)
+                }
+            }
+            AndroidView(factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    this.player = player
+                }
+            }, modifier = Modifier.fillMaxWidth().height(200.dp))
+        } else {
+            Text(text = "Preview", color = Color.White)
+        }
 
         when (overlaySheet) {
             is EditorOverlaySheet.Sticker -> {
@@ -432,6 +496,63 @@ private fun PreviewArea(
 }
 
 @Composable
+private fun VideoControls(isPlaying: Boolean, onPlayPause: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedButton(onClick = { onPlayPause(!isPlaying) }) {
+            Text(if (isPlaying) "일시정지" else "재생")
+        }
+    }
+}
+
+@Composable
+private fun TimelineProgressBar(
+    timeline: Timeline?,
+    currentPositionMs: Long,
+    onSeek: (Long) -> Unit,
+) {
+    if (timeline == null) return
+    val totalMs = timeline.clips.last().range.endMs.value
+    val density = LocalDensity.current
+    val widthDp = 300.dp
+    val widthPx = with(density) { widthDp.toPx() }
+    val playheadPx = (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) * widthPx
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(widthDp)
+                .height(24.dp)
+                .background(Color.White.copy(alpha = 0.06f))
+                .pointerInput(totalMs, widthPx) {
+                    detectDragGestures { change, drag ->
+                        change.consume()
+                        val x = (change.position.x).coerceIn(0f, widthPx)
+                        val newPos = ((x / widthPx) * totalMs).toLong()
+                        onSeek(newPos)
+                    }
+                },
+        )
+        Box(
+            modifier = Modifier
+                .padding(start = with(density) { playheadPx.toDp() })
+                .width(2.dp)
+                .height(24.dp)
+                .background(Color.Red.copy(alpha = 0.9f)),
+        )
+    }
+}
+
+@Composable
 private fun OverlayPalette(
     onAddSticker: () -> Unit,
     onAddSubtitle: () -> Unit,
@@ -498,6 +619,7 @@ private fun OverlayList(
     onDragEndHandle: (overlayId: String, newEndMs: Long) -> Unit,
     selectedOverlayId: String?,
     onClickOverlay: (overlayId: String) -> Unit,
+    currentPositionMs: Long,
 ) {
     if (timeline == null) return
     val totalMs = timeline.clips.last().range.endMs.value
@@ -552,6 +674,16 @@ private fun OverlayList(
                             .height(2.dp)
                             .align(Alignment.CenterStart)
                             .background(Color.White.copy(alpha = 0.06f)),
+                    )
+                    // Red playhead line across tracks
+                    val playheadPx = (currentPositionMs.toFloat() / totalMs) * timelineWidthPx
+                    Box(
+                        modifier = Modifier
+                            .padding(start = with(density) { playheadPx.toDp() })
+                            .width(2.dp)
+                            .height(28.dp)
+                            .align(Alignment.CenterStart)
+                            .background(Color.Red.copy(alpha = 0.9f)),
                     )
                     // Range area (배경은 타입 색, 선택 시 노란 테두리)
                     val isSelected = isRowSelected

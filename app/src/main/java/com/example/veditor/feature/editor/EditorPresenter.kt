@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 data class EditorState(
     val timeline: Timeline?,
     val isExporting: Boolean = false,
+    val isPlaying: Boolean = false,
+    val currentPositionMs: Long = 0L,
     val overlaySheet: EditorOverlaySheet? = null,
     val overlayDraft: OverlayDraft? = null,
     val selectedOverlayId: String? = null,
@@ -90,6 +92,24 @@ class EditorPresenter(
             val result = exportUseCase?.invoke(ExportParams(tl)) { _ -> /* progress hook */ }
             _state.value = _state.value.copy(isExporting = false)
             exportJob = null
+        }
+    }
+
+    // Playback controls
+    fun setPlaying(playing: Boolean) {
+        _state.value = _state.value.copy(isPlaying = playing)
+    }
+
+    fun seekTo(positionMs: Long) {
+        val tl = _state.value.timeline ?: return
+        val end = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
+        val clamped = positionMs.coerceIn(0L, end)
+        _state.value = _state.value.copy(currentPositionMs = clamped)
+    }
+
+    fun onPlaybackPosition(positionMs: Long) {
+        if (_state.value.isPlaying) {
+            seekTo(positionMs)
         }
     }
 
