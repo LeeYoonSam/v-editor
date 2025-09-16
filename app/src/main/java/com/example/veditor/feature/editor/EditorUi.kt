@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,6 +96,8 @@ fun EditorUi(presenter: EditorPresenter) {
         onPlayPause = presenter::setPlaying,
         onSeek = presenter::seekTo,
         onPlaybackTick = presenter::onPlaybackPosition,
+        onJumpPrev = presenter::jumpToPrevious,
+        onJumpNext = presenter::jumpToNext,
         onUpdateTimeForOverlay = { id, start, end ->
             val tlEnd = presenter.state.value.timeline?.clips?.lastOrNull()?.range?.endMs?.value ?: 0L
             val current = presenter.state.value.timeline?.overlays?.firstOrNull { it.id == id }
@@ -107,6 +110,8 @@ fun EditorUi(presenter: EditorPresenter) {
         },
         onEditOverlay = presenter::editOverlay,
         onDeleteSelectedOverlay = presenter::deleteSelectedOverlay,
+        onTrimClipStart = presenter::trimClipStart,
+        onTrimClipEnd = presenter::trimClipEnd,
     )
 }
 
@@ -135,6 +140,10 @@ private fun EditorContent(
     onPlayPause: (Boolean) -> Unit = {},
     onSeek: (Long) -> Unit = {},
     onPlaybackTick: (Long) -> Unit = {},
+    onJumpPrev: () -> Unit = {},
+    onJumpNext: () -> Unit = {},
+    onTrimClipStart: (clipIndex: Int, newStartMs: Long) -> Unit = { _, _ -> },
+    onTrimClipEnd: (clipIndex: Int, newEndMs: Long) -> Unit = { _, _ -> },
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -148,10 +157,12 @@ private fun EditorContent(
                     .padding(innerPadding),
             )
         } else {
+            val vScroll = rememberScrollState()
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .verticalScroll(vScroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 PreviewArea(
@@ -166,12 +177,21 @@ private fun EditorContent(
                 )
                 VideoControls(
                     isPlaying = state.isPlaying,
+                    currentPositionMs = state.currentPositionMs,
+                    totalDurationMs = state.timeline.clips.last().range.endMs.value,
                     onPlayPause = onPlayPause,
+                    onJumpPrev = onJumpPrev,
+                    onJumpNext = onJumpNext,
                 )
                 TimelineThumbnailsBar(
                     timeline = state.timeline,
                     currentPositionMs = state.currentPositionMs,
                     onSeek = { pos -> onSeek(pos) },
+                )
+                ClipsTrack(
+                    timeline = state.timeline,
+                    onTrimStart = onTrimClipStart,
+                    onTrimEnd = onTrimClipEnd,
                 )
                 OverlayPalette(
                     onAddSticker = onAddSticker,
@@ -497,7 +517,14 @@ private fun PreviewArea(
 }
 
 @Composable
-private fun VideoControls(isPlaying: Boolean, onPlayPause: (Boolean) -> Unit) {
+private fun VideoControls(
+    isPlaying: Boolean,
+    currentPositionMs: Long,
+    totalDurationMs: Long,
+    onPlayPause: (Boolean) -> Unit,
+    onJumpPrev: () -> Unit,
+    onJumpNext: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -505,10 +532,20 @@ private fun VideoControls(isPlaying: Boolean, onPlayPause: (Boolean) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedButton(onClick = { onPlayPause(!isPlaying) }) {
-            Text(if (isPlaying) "일시정지" else "재생")
-        }
+        OutlinedButton(onClick = onJumpPrev) { Text("이전") }
+        OutlinedButton(onClick = { onPlayPause(!isPlaying) }) { Text(if (isPlaying) "일시정지" else "재생") }
+        OutlinedButton(onClick = onJumpNext) { Text("다음") }
+        val pos = formatMs(currentPositionMs)
+        val total = formatMs(totalDurationMs)
+        Text("$pos / $total")
     }
+}
+
+private fun formatMs(ms: Long): String {
+    val totalSec = (ms / 1000).toInt()
+    val m = totalSec / 60
+    val s = totalSec % 60
+    return "%d:%02d".format(m, s)
 }
 
 @Composable
@@ -663,6 +700,97 @@ private fun TimelineThumbnailsBar(
                 .height(48.dp)
                 .background(Color.Red.copy(alpha = 0.9f)),
         )
+    }
+}
+
+@Composable
+private fun ClipsTrack(
+    timeline: Timeline?,
+    onTrimStart: (clipIndex: Int, newStartMs: Long) -> Unit,
+    onTrimEnd: (clipIndex: Int, newEndMs: Long) -> Unit,
+) {
+    if (timeline == null) return
+    val totalMs = timeline.clips.last().range.endMs.value
+    val density = LocalDensity.current
+    val dpPerMs = 0.3f
+    val timelineWidthDp = (totalMs * dpPerMs).dp
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .horizontalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Clips")
+        Box(
+            modifier = Modifier
+                .width(timelineWidthDp)
+                .height(36.dp)
+                .background(Color.White.copy(alpha = 0.06f)),
+        ) {
+            val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
+            timeline.clips.forEachIndexed { index, clip ->
+                val startMs = clip.range.startMs.value
+                val endMs = clip.range.endMs.value
+                val startPx = (startMs.toFloat() / totalMs) * timelineWidthPx
+                val endPx = (endMs.toFloat() / totalMs) * timelineWidthPx
+                // Clip body
+                Box(
+                    modifier = Modifier
+                        .padding(start = with(density) { startPx.toDp() })
+                        .width(with(density) { (endPx - startPx).toDp() })
+                        .height(24.dp)
+                        .align(Alignment.CenterStart)
+                        .background(Color(0xFF2A2A2A))
+                        .border(1.dp, Color.White.copy(alpha = 0.06f)),
+                )
+                // Start handle
+                Box(
+                    modifier = Modifier
+                        .padding(start = with(density) { (startPx - 12f).coerceAtLeast(0f).toDp() })
+                        .width(24.dp)
+                        .height(24.dp)
+                        .align(Alignment.CenterStart)
+                        .background(Color.Transparent)
+                        .pointerInput(index, timelineWidthPx, startPx, endPx) {
+                            var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                            detectDragGestures(
+                                onDragStart = { accumulated = 0f },
+                                onDrag = { change, drag ->
+                                    change.consume()
+                                    accumulated += drag.x
+                                    val newStartPx = (startPx + accumulated).coerceIn(0f, endPx - 50f)
+                                    val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                    onTrimStart(index, newStartMs)
+                                },
+                            )
+                        },
+                )
+                // End handle
+                Box(
+                    modifier = Modifier
+                        .padding(start = with(density) { (endPx - 12f).coerceAtLeast(0f).toDp() })
+                        .width(24.dp)
+                        .height(24.dp)
+                        .align(Alignment.CenterStart)
+                        .background(Color.Transparent)
+                        .pointerInput(index, timelineWidthPx, startPx, endPx) {
+                            var accumulated by androidx.compose.runtime.mutableStateOf(0f)
+                            detectDragGestures(
+                                onDragStart = { accumulated = 0f },
+                                onDrag = { change, drag ->
+                                    change.consume()
+                                    accumulated += drag.x
+                                    val newEndPx = (endPx + accumulated).coerceIn(startPx + 50f, timelineWidthPx)
+                                    val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                    onTrimEnd(index, newEndMs)
+                                },
+                            )
+                        },
+                )
+            }
+        }
     }
 }
 

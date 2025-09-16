@@ -5,6 +5,7 @@ import com.example.veditor.core.model.Overlay
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
+import com.example.veditor.core.domain.TrimClipUseCase
 import com.example.veditor.core.domain.ExportParams
 import com.example.veditor.core.domain.ExportResult
 import com.example.veditor.core.domain.ExportUseCase
@@ -37,6 +38,8 @@ class EditorPresenter(
         ),
     )
     val state: StateFlow<EditorState> = _state.asStateFlow()
+
+    private val trimClipUseCase = TrimClipUseCase()
 
     fun onImportRequested() { /* SAF/MediaStore 연결 예정 */ }
 
@@ -113,12 +116,65 @@ class EditorPresenter(
         }
     }
 
+    fun jumpToPrevious() {
+        val tl = _state.value.timeline ?: return
+        val current = _state.value.currentPositionMs
+        // Find nearest boundary before current among clip starts and important overlay edges
+        val boundaries = buildList {
+            add(0L)
+            tl.clips.forEach { add(it.range.startMs.value); add(it.range.endMs.value) }
+        }.distinct().sorted()
+        val prev = boundaries.lastOrNull { it < current } ?: 0L
+        seekTo(prev)
+    }
+
+    fun jumpToNext() {
+        val tl = _state.value.timeline ?: return
+        val current = _state.value.currentPositionMs
+        val end = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
+        val boundaries = buildList {
+            tl.clips.forEach { add(it.range.startMs.value); add(it.range.endMs.value) }
+            add(end)
+        }.distinct().sorted()
+        val next = boundaries.firstOrNull { it > current } ?: end
+        seekTo(next)
+    }
+
     fun onCloseSheet() {
         _state.value = _state.value.copy(overlaySheet = null, overlayDraft = null)
     }
 
     fun setTimeline(timeline: Timeline) {
         _state.value = _state.value.copy(timeline = timeline)
+    }
+
+    // Clip trimming
+    fun trimClipStart(clipIndex: Int, newStartMs: Long) {
+        val currentTimeline = _state.value.timeline ?: return
+        val clip = currentTimeline.clips.getOrNull(clipIndex) ?: return
+        val clampedStart = newStartMs.coerceIn(clip.range.startMs.value, clip.range.endMs.value - 100L)
+        val newRange = TimeRange(TimeMs(clampedStart), clip.range.endMs)
+        val updated = runCatching { trimClipUseCase(currentTimeline, clipIndex, newRange) }.getOrNull() ?: return
+        _state.value = _state.value.copy(timeline = updated)
+        // keep playhead in bounds
+        val end = updated.clips.lastOrNull()?.range?.endMs?.value ?: return
+        if (_state.value.currentPositionMs > end) {
+            _state.value = _state.value.copy(currentPositionMs = end)
+        }
+    }
+
+    fun trimClipEnd(clipIndex: Int, newEndMs: Long) {
+        val currentTimeline = _state.value.timeline ?: return
+        val clip = currentTimeline.clips.getOrNull(clipIndex) ?: return
+        val clampedEnd = newEndMs.coerceIn(clip.range.startMs.value + 100L, clip.range.endMs.value)
+        val newRange = TimeRange(clip.range.startMs, TimeMs(clampedEnd))
+        val updated = runCatching { trimClipUseCase(currentTimeline, clipIndex, newRange) }.getOrNull() ?: return
+        _state.value = _state.value.copy(timeline = updated)
+        // playhead clamp
+        val end = updated.clips.lastOrNull()?.range?.endMs?.value ?: return
+        if (_state.value.currentPositionMs > end) {
+            _state.value = _state.value.copy(currentPositionMs = end)
+        }
     }
 
     fun updateStickerDraft(

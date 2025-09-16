@@ -2,6 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 권한 전략: Photo Picker 우선(권한 불필요), 하위/대체 경로용 권한 선언 -->
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VIDEO"
+        android:required="false"
+        tools:targetApi="33" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

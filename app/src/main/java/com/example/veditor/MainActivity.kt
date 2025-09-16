@@ -1,9 +1,14 @@
 package com.example.veditor
 
 import android.os.Bundle
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -19,11 +24,8 @@ import com.example.veditor.feature.editor.EditorUi
 import com.example.veditor.feature.home.HomePresenter
 import com.example.veditor.feature.home.HomeState
 import com.example.veditor.feature.home.HomeUi
-import com.example.veditor.feature.importmedia.ImportPresenter
-import com.example.veditor.feature.importmedia.ImportUi
 import com.example.veditor.feature.navigation.EditorScreen
 import com.example.veditor.feature.navigation.HomeScreen
-import com.example.veditor.feature.navigation.ImportScreen
 import com.slack.circuit.backstack.rememberSaveableBackStack
 import com.slack.circuit.foundation.rememberCircuitNavigator
 
@@ -54,18 +56,43 @@ private fun App() {
     val backStack = rememberSaveableBackStack(root = HomeScreen)
     val navigator = rememberCircuitNavigator(backStack)
 
+    val context = LocalContext.current
+    // Photo Picker: multiple video selection
+    val pickVideosLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(),
+        onResult = { uris: List<Uri> ->
+            if (uris.isNotEmpty()) {
+                val asStrings = ArrayList(uris.map { it.toString() })
+                navigator.goTo(EditorScreen(selectedUris = asStrings))
+            }
+        },
+    )
+    // Fallback: SAF GetMultipleContents for videos
+    val pickVideosFallback = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+        onResult = { uris: List<Uri> ->
+            if (uris.isNotEmpty()) {
+                val asStrings = ArrayList(uris.map { it.toString() })
+                navigator.goTo(EditorScreen(selectedUris = asStrings))
+            }
+        },
+    )
+
     when (val screen = backStack.topRecord?.screen) {
         is HomeScreen -> {
             val presenter = HomePresenter(GetDeviceVideosUseCase(repo))
             val state: HomeState by presenter.state.collectAsState()
-            HomeUi(state = state, onCreateNewVideo = { navigator.goTo(ImportScreen) })
-        }
-        is ImportScreen -> {
-            val presenter = ImportPresenter(GetDeviceVideosUseCase(repo))
-            ImportUi(
-                presenter = presenter,
-                onConfirm = { selected -> navigator.goTo(EditorScreen(selectedUris = ArrayList(selected))) },
-                onClose = { navigator.pop() },
+            HomeUi(
+                state = state,
+                onCreateNewVideo = {
+                    if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
+                        pickVideosLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly),
+                        )
+                    } else {
+                        pickVideosFallback.launch("video/*")
+                    }
+                },
             )
         }
         is EditorScreen -> {
