@@ -30,11 +30,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -43,11 +46,15 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -74,10 +82,52 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
+import kotlin.math.abs
+import androidx.core.net.toUri
+import kotlin.math.ceil
+import kotlinx.coroutines.withContext
+
+private const val SNAP_THRESHOLD_PX = 10f
 
 @Composable
 fun EditorUi(presenter: EditorPresenter) {
     val state by presenter.state.collectAsState()
+    val context = LocalContext.current
+
+    // Ensure timeline clip durations match real media durations
+    LaunchedEffect(state.timeline?.clips?.map { it.sourceUri }) {
+        val tl = state.timeline ?: return@LaunchedEffect
+        if (tl.clips.isEmpty()) return@LaunchedEffect
+        val measured: List<Long> = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            tl.clips.map { clip ->
+                val mmr = android.media.MediaMetadataRetriever()
+                try {
+                    mmr.setDataSource(context, clip.sourceUri.toUri())
+                    val durMs = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                    durMs ?: (clip.range.endMs.value - clip.range.startMs.value)
+                } finally {
+                    mmr.release()
+                }
+            }
+        }
+        // Rebuild sequential ranges using measured durations
+        var start = 0L
+        val rebuilt = tl.clips.mapIndexed { index, clip ->
+            val d = measured.getOrNull(index) ?: (clip.range.endMs.value - clip.range.startMs.value)
+            val newClip = VideoClip(
+                id = clip.id,
+                sourceUri = clip.sourceUri,
+                range = TimeRange(TimeMs(start), TimeMs(start + d)),
+            )
+            start += d
+            newClip
+        }
+        val oldTotal = tl.clips.last().range.endMs.value
+        val newTotal = rebuilt.last().range.endMs.value
+        if (newTotal != oldTotal) {
+            presenter.setTimeline(tl.copy(clips = rebuilt))
+        }
+    }
     EditorContent(
         state = state,
         onAddSticker = presenter::onAddStickerClicked,
@@ -96,6 +146,11 @@ fun EditorUi(presenter: EditorPresenter) {
         onPlayPause = presenter::setPlaying,
         onSeek = presenter::seekTo,
         onPlaybackTick = presenter::onPlaybackPosition,
+        onPlaybackComplete = {
+            val end = presenter.state.value.timeline?.clips?.lastOrNull()?.range?.endMs?.value ?: 0L
+            presenter.seekTo(end)
+            presenter.setPlaying(false)
+        },
         onJumpPrev = presenter::jumpToPrevious,
         onJumpNext = presenter::jumpToNext,
         onUpdateTimeForOverlay = { id, start, end ->
@@ -112,6 +167,10 @@ fun EditorUi(presenter: EditorPresenter) {
         onDeleteSelectedOverlay = presenter::deleteSelectedOverlay,
         onTrimClipStart = presenter::trimClipStart,
         onTrimClipEnd = presenter::trimClipEnd,
+        onAdjustTrimStartMs = presenter::adjustTrimStart,
+        onAdjustTrimEndMs = presenter::adjustTrimEnd,
+        onConfirmTrim = presenter::confirmTrimSelection,
+        onChangeZoom = presenter::setZoomDpPerMs,
     )
 }
 
@@ -140,10 +199,15 @@ private fun EditorContent(
     onPlayPause: (Boolean) -> Unit = {},
     onSeek: (Long) -> Unit = {},
     onPlaybackTick: (Long) -> Unit = {},
+    onPlaybackComplete: () -> Unit = {},
     onJumpPrev: () -> Unit = {},
     onJumpNext: () -> Unit = {},
     onTrimClipStart: (clipIndex: Int, newStartMs: Long) -> Unit = { _, _ -> },
     onTrimClipEnd: (clipIndex: Int, newEndMs: Long) -> Unit = { _, _ -> },
+    onAdjustTrimStartMs: (Long) -> Unit = {},
+    onAdjustTrimEndMs: (Long) -> Unit = {},
+    onConfirmTrim: () -> Unit = {},
+    onChangeZoom: (Float) -> Unit = {},
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -172,41 +236,33 @@ private fun EditorContent(
                     isPlaying = state.isPlaying,
                     currentPositionMs = state.currentPositionMs,
                     onPlaybackTick = onPlaybackTick,
+                    onPlaybackComplete = onPlaybackComplete,
                     onDragSticker = { x, y -> onUpdateSticker(null, x, y, null, null) },
                     onDragSubtitle = { x, y -> onUpdateSubtitlePosition(x, y) },
                 )
-                VideoControls(
-                    isPlaying = state.isPlaying,
-                    currentPositionMs = state.currentPositionMs,
-                    totalDurationMs = state.timeline.clips.last().range.endMs.value,
-                    onPlayPause = onPlayPause,
-                    onJumpPrev = onJumpPrev,
-                    onJumpNext = onJumpNext,
-                )
-                TimelineThumbnailsBar(
-                    timeline = state.timeline,
-                    currentPositionMs = state.currentPositionMs,
-                    onSeek = { pos -> onSeek(pos) },
-                )
-                ClipsTrack(
-                    timeline = state.timeline,
-                    onTrimStart = onTrimClipStart,
-                    onTrimEnd = onTrimClipEnd,
-                )
-                OverlayPalette(
-                    onAddSticker = onAddSticker,
-                    onAddSubtitle = onAddSubtitle,
-                    onAddMusic = onAddMusic,
-                    onExport = onExport,
-                )
-                OverlayList(
-                    timeline = state.timeline,
-                    onDragStartHandle = { id, newStart -> onUpdateTimeForOverlay(id, newStart, null) },
-                    onDragEndHandle = { id, newEnd -> onUpdateTimeForOverlay(id, null, newEnd) },
-                    selectedOverlayId = state.selectedOverlayId,
-                    onClickOverlay = { id -> onEditOverlay(id) },
-                    currentPositionMs = state.currentPositionMs,
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SmallPlayPauseButton(isPlaying = state.isPlaying, onToggle = {
+                        val end = state.timeline.clips.last().range.endMs.value
+                        if (!state.isPlaying && state.currentPositionMs >= end) {
+                            onSeek(0L)
+                        }
+                        onPlayPause(!state.isPlaying)
+                    })
+                    Box(modifier = Modifier.weight(1f).height(48.dp)) {
+                        TimelineThumbnailsBar(
+                            timeline = state.timeline,
+                            currentPositionMs = state.currentPositionMs,
+                            onSeek = { pos -> onSeek(pos) },
+                            onScrubStart = { onPlayPause(false) },
+                        )
+                    }
+                }
             }
         }
 
@@ -325,6 +381,68 @@ private fun EditorContent(
 }
 
 @Composable
+private fun ZoomSlider(value: Float, onChange: (Float) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Zoom")
+        Slider(value = value, onValueChange = onChange, valueRange = 0.05f..1.0f)
+        Text(String.format("%.2f dp/ms", value))
+    }
+}
+
+@Composable
+private fun TrimSelector(
+    trimStartMs: Long,
+    trimEndMs: Long,
+    totalMs: Long,
+    onLeftNudge: () -> Unit,
+    onRightNudge: () -> Unit,
+    onAdjustStartMs: (Long) -> Unit,
+    onAdjustEndMs: (Long) -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Arrow nudges
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            IconButton(onClick = onLeftNudge) { Icon(Icons.Filled.ChevronLeft, contentDescription = "왼쪽") }
+            IconButton(onClick = onRightNudge) { Icon(Icons.Filled.ChevronRight, contentDescription = "오른쪽") }
+        }
+        // Range sliders (start/end)
+        Text("시작: ${formatMs(trimStartMs)}  끝: ${formatMs(trimEndMs)}")
+        Slider(
+            value = (trimStartMs.toFloat() / totalMs).coerceIn(0f, 1f),
+            onValueChange = { f ->
+                val target = (f * totalMs).toFloat()
+                onAdjustStartMs(target.toLong() - trimStartMs)
+            },
+            valueRange = 0f..(trimEndMs.toFloat() / totalMs).coerceIn(0.01f, 1f),
+        )
+        Slider(
+            value = (trimEndMs.toFloat() / totalMs).coerceIn(0f, 1f),
+            onValueChange = { f ->
+                val target = (f * totalMs).toFloat()
+                onAdjustEndMs(target.toLong() - trimEndMs)
+            },
+            valueRange = (trimStartMs.toFloat() / totalMs).coerceIn(0f, 0.99f)..1f,
+        )
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Text("선택 길이: ${formatMs(trimEndMs - trimStartMs)}")
+            OutlinedButton(onClick = onConfirm) { Text("자르기") }
+        }
+    }
+}
+
+@Composable
 private fun EditorTopBar() {
     Row(
         modifier = Modifier
@@ -361,6 +479,7 @@ private fun PreviewArea(
     isPlaying: Boolean,
     currentPositionMs: Long,
     onPlaybackTick: (Long) -> Unit,
+    onPlaybackComplete: () -> Unit = {},
     onDragSticker: (x: Float, y: Float) -> Unit,
     onDragSubtitle: (x: Float, y: Float) -> Unit,
 ) {
@@ -397,12 +516,17 @@ private fun PreviewArea(
                 player.playWhenReady = isPlaying
             }
             LaunchedEffect(currentPositionMs) {
-                if (!isPlaying) player.seekTo(currentPositionMs)
+                player.seekTo(currentPositionMs)
             }
             LaunchedEffect(isPlaying) {
                 while (isPlaying) {
                     onPlaybackTick(player.currentPosition)
                     delay(100)
+                    val total = (player.duration.takeIf { it > 0 } ?: timeline.clips.last().range.endMs.value).toLong()
+                    if (player.currentPosition >= total) {
+                        onPlaybackComplete()
+                        break
+                    }
                 }
             }
             AndroidView(factory = { ctx ->
@@ -541,6 +665,38 @@ private fun VideoControls(
     }
 }
 
+@Composable
+private fun SimplePlayControl(isPlaying: Boolean, onPlayPause: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = { onPlayPause(!isPlaying) }) {
+            if (isPlaying) Icon(Icons.Filled.Pause, contentDescription = "일시정지")
+            else Icon(Icons.Filled.PlayArrow, contentDescription = "재생")
+        }
+        // Thumbnail strip container will be placed by caller
+    }
+}
+
+@Composable
+private fun SmallPlayPauseButton(isPlaying: Boolean, onToggle: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .width(40.dp)
+            .height(40.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        IconButton(onClick = onToggle, modifier = Modifier.width(40.dp).height(40.dp)) {
+            if (isPlaying) Icon(Icons.Filled.Pause, contentDescription = "일시정지")
+            else Icon(Icons.Filled.PlayArrow, contentDescription = "재생")
+        }
+    }
+}
+
 private fun formatMs(ms: Long): String {
     val totalSec = (ms / 1000).toInt()
     val m = totalSec / 60
@@ -595,110 +751,110 @@ private fun TimelineThumbnailsBar(
     timeline: Timeline?,
     currentPositionMs: Long,
     onSeek: (Long) -> Unit,
+    onScrubStart: () -> Unit = {},
 ) {
     if (timeline == null) return
     val totalMs = timeline.clips.last().range.endMs.value
     val density = LocalDensity.current
     val context = LocalContext.current
-    val dpPerMs = 0.3f
-    val timelineWidthDp = (totalMs * dpPerMs).dp
-    var viewportPx by remember { mutableStateOf(0) }
-    val scrollState = rememberScrollState()
+    var stripWidthPx by remember { mutableIntStateOf(0) }
+    val sidePaddingDp = 10.dp
+    val sidePaddingPx = with(density) { sidePaddingDp.toPx() }
 
-    // Extract simple thumbnails in background (coarse, e.g., every 1s)
     val videoUri = timeline.clips.first().sourceUri
-    var thumbs by remember(videoUri) { mutableStateOf<List<androidx.compose.ui.graphics.ImageBitmap>>(emptyList()) }
-    LaunchedEffect(videoUri, totalMs) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    // Precompute frames once per (uri, width, duration)
+    var thumbs by remember(videoUri, stripWidthPx, totalMs) { mutableStateOf<List<androidx.compose.ui.graphics.ImageBitmap>>(emptyList()) }
+    LaunchedEffect(videoUri, totalMs, stripWidthPx) {
+        if (stripWidthPx <= 0) return@LaunchedEffect
+        withContext(kotlinx.coroutines.Dispatchers.IO) {
             val mmr = android.media.MediaMetadataRetriever()
             try {
-                mmr.setDataSource(context, android.net.Uri.parse(videoUri))
-                val interval = 1000L
-                val frames = mutableListOf<androidx.compose.ui.graphics.ImageBitmap>()
-                var t = 0L
-                while (t < totalMs) {
-                    val bmp = mmr.getFrameAtTime(t * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                    if (bmp != null) frames.add(bmp.asImageBitmap())
-                    t += interval
+                mmr.setDataSource(context, videoUri.toUri())
+                val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
+                val totalSec = (totalMs / 1000f).coerceAtLeast(1f)
+                val pxPerSec = effectivePx / totalSec
+                val desiredSecondsPerThumb = 4f
+                val targetPxPerThumb = (pxPerSec * desiredSecondsPerThumb).coerceIn(32f, 96f)
+                val frameCount = ceil(effectivePx / targetPxPerThumb).toInt().coerceIn(1, 120)
+                val frames = run {
+                    val msPerFrame = totalMs.toFloat() / frameCount
+                    val timestampsUs = (0 until frameCount).map { idx ->
+                        val tsMs = (idx * msPerFrame)
+                        (tsMs * 1000L).toLong().coerceIn(0L, totalMs * 1000L - 1_000L)
+                    }
+                    timestampsUs.mapNotNull { ts ->
+                        val bmp = mmr.getFrameAtTime(ts, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                        bmp?.asImageBitmap()
+                    }
                 }
-                thumbs = frames
+                thumbs = if (frames.isEmpty()) emptyList() else buildList {
+                    addAll(frames)
+                    while (size < frameCount) add(frames.last())
+                }
             } finally {
                 mmr.release()
             }
         }
     }
 
-    // Auto-scroll to keep playhead centered when possible
-    LaunchedEffect(currentPositionMs, viewportPx, totalMs) {
-        val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
-        if (viewportPx > 0 && timelineWidthPx > viewportPx) {
-            val playheadPx = (currentPositionMs.toFloat() / totalMs) * timelineWidthPx
-            val target = (playheadPx - viewportPx / 2f).coerceIn(0f, timelineWidthPx - viewportPx)
-            scrollState.animateScrollTo(target.toInt())
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .onSizeChanged { viewportPx = it.width }
-            .horizontalScroll(scrollState),
+            .onSizeChanged { stripWidthPx = it.width },
     ) {
-        // Rail background and frames
-        Box(
-            modifier = Modifier
-                .width(timelineWidthDp)
-                .height(48.dp)
-                .background(Color.White.copy(alpha = 0.06f)),
-        )
-        Row(modifier = Modifier.width(timelineWidthDp).height(48.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = sidePaddingDp)) {
             if (thumbs.isEmpty()) {
-                // placeholders
-                repeat(10) {
+                val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
+                val totalSec = (totalMs / 1000f).coerceAtLeast(1f)
+                val pxPerSec = effectivePx / totalSec
+                val desiredSecondsPerThumb = 4f
+                val targetPxPerThumb = (pxPerSec * desiredSecondsPerThumb).coerceIn(32f, 96f)
+                val placeholders = ceil(effectivePx / targetPxPerThumb).toInt().coerceAtLeast(1)
+                repeat(placeholders) {
                     Box(
                         modifier = Modifier
-                            .width(60.dp)
+                            .weight(1f)
                             .height(48.dp)
                             .background(Color.DarkGray.copy(alpha = 0.3f)),
                     )
                 }
             } else {
-                val itemWidthDp = 60.dp
                 thumbs.forEach { img ->
                     androidx.compose.foundation.Image(
                         bitmap = img,
                         contentDescription = null,
-                        modifier = Modifier.width(itemWidthDp).height(48.dp),
+                        modifier = Modifier.weight(1f).height(48.dp),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     )
                 }
             }
         }
-        // Seek by drag anywhere on the rail
+        // Seek by tap/drag within the strip (no scroll)
         Box(
             modifier = Modifier
-                .width(timelineWidthDp)
+                .fillMaxWidth()
                 .height(48.dp)
-                .pointerInput(totalMs) {
-                    detectDragGestures(onDrag = { change, _ ->
+                .pointerInput(totalMs, stripWidthPx) {
+                    detectDragGestures(
+                        onDragStart = { onScrubStart() },
+                        onDrag = { change, _ ->
                         change.consume()
-                        val x = change.position.x + scrollState.value
-                        val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
-                        val clamped = x.coerceIn(0f, timelineWidthPx)
-                        val pos = ((clamped / timelineWidthPx) * totalMs).toLong()
-                        onSeek(pos)
+                        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
+                        val x = (change.position.x - sidePaddingPx).coerceIn(0f, effectivePx)
+                        val raw = ((x / effectivePx) * totalMs).toLong()
+                        onSeek(raw)
                     })
                 },
         )
-        // Red playhead
-        val playheadPx = (currentPositionMs.toFloat() / totalMs) * with(density) { timelineWidthDp.toPx() }
+        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
+        val playheadPx = sidePaddingPx + ((currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f)) * effectivePx
         Box(
             modifier = Modifier
                 .padding(start = with(density) { playheadPx.toDp() })
                 .width(2.dp)
                 .height(48.dp)
-                .background(Color.Red.copy(alpha = 0.9f)),
+                .background(Color.Red.copy(alpha = 0.9f))
+                .zIndex(1f),
         )
     }
 }
@@ -708,11 +864,12 @@ private fun ClipsTrack(
     timeline: Timeline?,
     onTrimStart: (clipIndex: Int, newStartMs: Long) -> Unit,
     onTrimEnd: (clipIndex: Int, newEndMs: Long) -> Unit,
+    dpPerMs: Float,
+    currentPositionMs: Long,
 ) {
     if (timeline == null) return
     val totalMs = timeline.clips.last().range.endMs.value
     val density = LocalDensity.current
-    val dpPerMs = 0.3f
     val timelineWidthDp = (totalMs * dpPerMs).dp
     val scrollState = rememberScrollState()
     Column(
@@ -730,6 +887,28 @@ private fun ClipsTrack(
                 .background(Color.White.copy(alpha = 0.06f)),
         ) {
             val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
+            val boundaries = buildList {
+                add(0L)
+                timeline.clips.forEach { add(it.range.startMs.value); add(it.range.endMs.value) }
+                timeline.overlays.forEach { add(it.timeRange.startMs.value); add(it.timeRange.endMs.value) }
+            }.distinct().sorted()
+            fun snapMsIfClose(candidateMs: Long): Long {
+                val candidatePx = (candidateMs.toFloat() / totalMs) * timelineWidthPx
+                // 플레이헤드와 경계에 스냅
+                val targetsMs = boundaries + currentPositionMs
+                var bestMs = candidateMs
+                var bestDx = Float.MAX_VALUE
+                targetsMs.forEach { tMs ->
+                    val tx = (tMs.toFloat() / totalMs) * timelineWidthPx
+                    val dx = abs(candidatePx - tx)
+                    if (dx < bestDx) {
+                        bestDx = dx
+                        bestMs = tMs
+                    }
+                }
+                return if (bestDx <= SNAP_THRESHOLD_PX) bestMs else candidateMs
+            }
+
             timeline.clips.forEachIndexed { index, clip ->
                 val startMs = clip.range.startMs.value
                 val endMs = clip.range.endMs.value
@@ -761,8 +940,9 @@ private fun ClipsTrack(
                                     change.consume()
                                     accumulated += drag.x
                                     val newStartPx = (startPx + accumulated).coerceIn(0f, endPx - 50f)
-                                    val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
-                                    onTrimStart(index, newStartMs)
+                                    val rawMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                    val snapped = snapMsIfClose(rawMs)
+                                    onTrimStart(index, snapped)
                                 },
                             )
                         },
@@ -783,8 +963,9 @@ private fun ClipsTrack(
                                     change.consume()
                                     accumulated += drag.x
                                     val newEndPx = (endPx + accumulated).coerceIn(startPx + 50f, timelineWidthPx)
-                                    val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
-                                    onTrimEnd(index, newEndMs)
+                                    val rawMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                    val snapped = snapMsIfClose(rawMs)
+                                    onTrimEnd(index, snapped)
                                 },
                             )
                         },
@@ -862,13 +1043,12 @@ private fun OverlayList(
     selectedOverlayId: String?,
     onClickOverlay: (overlayId: String) -> Unit,
     currentPositionMs: Long,
+    dpPerMs: Float = 0.3f,
 ) {
     if (timeline == null) return
     val totalMs = timeline.clips.last().range.endMs.value
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
-    // Scale: 1s = 300dp → dpPerMs = 0.3f (조작 용이성 향상)
-    val dpPerMs = 0.3f
     val timelineWidthDp = (totalMs * dpPerMs).dp
 
     Column(
@@ -907,6 +1087,26 @@ private fun OverlayList(
                         .testTag("overlay_row_${ov.id}"),
                 ) {
                     val timelineWidthPx = with(density) { timelineWidthDp.toPx() }
+                    val boundaries = buildList {
+                        add(0L)
+                        timeline.clips.forEach { add(it.range.startMs.value); add(it.range.endMs.value) }
+                        timeline.overlays.forEach { add(it.timeRange.startMs.value); add(it.timeRange.endMs.value) }
+                    }.distinct().sorted()
+                    fun snapMsIfClose(candidateMs: Long): Long {
+                        val candidatePx = (candidateMs.toFloat() / totalMs) * timelineWidthPx
+                        val targetsMs = boundaries + currentPositionMs
+                        var bestMs = candidateMs
+                        var bestDx = Float.MAX_VALUE
+                        targetsMs.forEach { tMs ->
+                            val tx = (tMs.toFloat() / totalMs) * timelineWidthPx
+                            val dx = kotlin.math.abs(candidatePx - tx)
+                            if (dx < bestDx) {
+                                bestDx = dx
+                                bestMs = tMs
+                            }
+                        }
+                        return if (bestDx <= SNAP_THRESHOLD_PX) bestMs else candidateMs
+                    }
                     val startPx = (startMs.toFloat() / totalMs) * timelineWidthPx
                     val endPx = (endMs.toFloat() / totalMs) * timelineWidthPx
                     // Base track line (subtle)
@@ -952,10 +1152,10 @@ private fun OverlayList(
                                                     timelineWidthPx - widthPx,
                                                 )
                                                 val newEndPx = (newStartPx + widthPx).coerceIn(widthPx, timelineWidthPx)
-                                                val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
-                                                val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
-                                                onDragStartHandle(ov.id, newStartMs)
-                                                onDragEndHandle(ov.id, newEndMs)
+                                                val rawStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                                val rawEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                                onDragStartHandle(ov.id, snapMsIfClose(rawStartMs))
+                                                onDragEndHandle(ov.id, snapMsIfClose(rawEndMs))
                                             },
                                         )
                                     }
@@ -986,8 +1186,8 @@ private fun OverlayList(
                                                 change.consume()
                                                 accumulated += drag.x
                                                 val newStartPx = (startPx + accumulated).coerceIn(0f, endPx - 8f)
-                                                val newStartMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
-                                                onDragStartHandle(ov.id, newStartMs)
+                                                val rawMs = ((newStartPx / timelineWidthPx) * totalMs).toLong()
+                                                onDragStartHandle(ov.id, snapMsIfClose(rawMs))
                                             },
                                         )
                                     }
@@ -1019,8 +1219,8 @@ private fun OverlayList(
                                                     startPx + 8f,
                                                     timelineWidthPx,
                                                 )
-                                                val newEndMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
-                                                onDragEndHandle(ov.id, newEndMs)
+                                                val rawMs = ((newEndPx / timelineWidthPx) * totalMs).toLong()
+                                                onDragEndHandle(ov.id, snapMsIfClose(rawMs))
                                             },
                                         )
                                     }
