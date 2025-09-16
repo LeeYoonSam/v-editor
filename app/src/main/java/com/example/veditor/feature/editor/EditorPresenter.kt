@@ -1,20 +1,19 @@
 package com.example.veditor.feature.editor
 
 import androidx.lifecycle.ViewModel
+import com.example.veditor.core.domain.ExportParams
+import com.example.veditor.core.domain.ExportUseCase
+import com.example.veditor.core.domain.TrimClipUseCase
 import com.example.veditor.core.model.Overlay
 import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
-import com.example.veditor.core.domain.TrimClipUseCase
-import com.example.veditor.core.domain.ExportParams
-import com.example.veditor.core.domain.ExportResult
-import com.example.veditor.core.domain.ExportUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class EditorState(
@@ -63,21 +62,7 @@ class EditorPresenter(
             ),
         )
     }
-    fun onAddSubtitleClicked() {
-        _state.value = _state.value.copy(
-            selectedOverlayId = null,
-            overlaySheet = EditorOverlaySheet.Subtitle,
-            overlayDraft = OverlayDraft.Subtitle(
-                text = "",
-                startMs = 0L,
-                durationMs = 1_000L,
-                x = 0.5f,
-                y = 0.8f,
-                textSizeSp = 18f,
-                colorArgb = 0xFFFFFFFF,
-            ),
-        )
-    }
+
     fun onAddMusicClicked() {
         _state.value = _state.value.copy(
             selectedOverlayId = null,
@@ -121,30 +106,6 @@ class EditorPresenter(
         }
     }
 
-    fun jumpToPrevious() {
-        val tl = _state.value.timeline ?: return
-        val current = _state.value.currentPositionMs
-        // Find nearest boundary before current among clip starts and important overlay edges
-        val boundaries = buildList {
-            add(0L)
-            tl.clips.forEach { add(it.range.startMs.value); add(it.range.endMs.value) }
-        }.distinct().sorted()
-        val prev = boundaries.lastOrNull { it < current } ?: 0L
-        seekTo(prev)
-    }
-
-    fun jumpToNext() {
-        val tl = _state.value.timeline ?: return
-        val current = _state.value.currentPositionMs
-        val end = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
-        val boundaries = buildList {
-            tl.clips.forEach { add(it.range.startMs.value); add(it.range.endMs.value) }
-            add(end)
-        }.distinct().sorted()
-        val next = boundaries.firstOrNull { it > current } ?: end
-        seekTo(next)
-    }
-
     fun onCloseSheet() {
         _state.value = _state.value.copy(overlaySheet = null, overlayDraft = null)
     }
@@ -154,96 +115,6 @@ class EditorPresenter(
             timeline = timeline,
             trimStartMs = 0L,
             trimEndMs = timeline.clips.lastOrNull()?.range?.endMs?.value ?: 0L,
-        )
-    }
-
-    // Clip trimming
-    fun trimClipStart(clipIndex: Int, newStartMs: Long) {
-        val currentTimeline = _state.value.timeline ?: return
-        val clip = currentTimeline.clips.getOrNull(clipIndex) ?: return
-        val clampedStart = newStartMs.coerceIn(clip.range.startMs.value, clip.range.endMs.value - 100L)
-        val newRange = TimeRange(TimeMs(clampedStart), clip.range.endMs)
-        val updated = runCatching { trimClipUseCase(currentTimeline, clipIndex, newRange) }.getOrNull() ?: return
-        _state.value = _state.value.copy(timeline = updated)
-        // keep playhead in bounds
-        val end = updated.clips.lastOrNull()?.range?.endMs?.value ?: return
-        if (_state.value.currentPositionMs > end) {
-            _state.value = _state.value.copy(currentPositionMs = end)
-        }
-    }
-
-    fun trimClipEnd(clipIndex: Int, newEndMs: Long) {
-        val currentTimeline = _state.value.timeline ?: return
-        val clip = currentTimeline.clips.getOrNull(clipIndex) ?: return
-        val clampedEnd = newEndMs.coerceIn(clip.range.startMs.value + 100L, clip.range.endMs.value)
-        val newRange = TimeRange(clip.range.startMs, TimeMs(clampedEnd))
-        val updated = runCatching { trimClipUseCase(currentTimeline, clipIndex, newRange) }.getOrNull() ?: return
-        _state.value = _state.value.copy(timeline = updated)
-        // playhead clamp
-        val end = updated.clips.lastOrNull()?.range?.endMs?.value ?: return
-        if (_state.value.currentPositionMs > end) {
-            _state.value = _state.value.copy(currentPositionMs = end)
-        }
-    }
-
-    fun setZoomDpPerMs(value: Float) {
-        val clamped = value.coerceIn(0.05f, 1.0f)
-        _state.value = _state.value.copy(zoomDpPerMs = clamped)
-    }
-
-    // Timeline trim selection controls (whole timeline)
-    fun adjustTrimStart(deltaMs: Long) {
-        val tl = _state.value.timeline ?: return
-        val end = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
-        val start = (_state.value.trimStartMs + deltaMs).coerceIn(0L, _state.value.trimEndMs - 100L)
-        _state.value = _state.value.copy(trimStartMs = start)
-        // keep playhead visible
-        if (_state.value.currentPositionMs < start) seekTo(start)
-    }
-
-    fun adjustTrimEnd(deltaMs: Long) {
-        val tl = _state.value.timeline ?: return
-        val endMax = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
-        val end = (_state.value.trimEndMs + deltaMs).coerceIn(_state.value.trimStartMs + 100L, endMax)
-        _state.value = _state.value.copy(trimEndMs = end)
-        if (_state.value.currentPositionMs > end) seekTo(end)
-    }
-
-    fun confirmTrimSelection() {
-        val tl = _state.value.timeline ?: return
-        val startSel = _state.value.trimStartMs
-        val endSel = _state.value.trimEndMs
-        if (endSel <= startSel) return
-        val newClips = mutableListOf<com.example.veditor.core.model.VideoClip>()
-        var index = 0
-        tl.clips.forEach { clip ->
-            val s = maxOf(clip.range.startMs.value, startSel)
-            val e = minOf(clip.range.endMs.value, endSel)
-            if (e > s) {
-                newClips += com.example.veditor.core.model.VideoClip(
-                    id = "clip-${index++}",
-                    sourceUri = clip.sourceUri,
-                    range = TimeRange(TimeMs(s - startSel), TimeMs(e - startSel)),
-                )
-            }
-        }
-        val newOverlays = tl.overlays.mapNotNull { ov ->
-            val s = maxOf(ov.timeRange.startMs.value, startSel)
-            val e = minOf(ov.timeRange.endMs.value, endSel)
-            if (e <= s) return@mapNotNull null
-            val newRange = TimeRange(TimeMs(s - startSel), TimeMs(e - startSel))
-            when (ov) {
-                is com.example.veditor.core.model.Overlay.Sticker -> ov.copy(timeRange = newRange)
-                is com.example.veditor.core.model.Overlay.Subtitle -> ov.copy(timeRange = newRange)
-                is com.example.veditor.core.model.Overlay.Music -> ov.copy(timeRange = newRange)
-            }
-        }
-        val newTimeline = tl.copy(clips = newClips, overlays = newOverlays)
-        _state.value = _state.value.copy(
-            timeline = newTimeline,
-            trimStartMs = 0L,
-            trimEndMs = newClips.lastOrNull()?.range?.endMs?.value ?: 0L,
-            currentPositionMs = 0L,
         )
     }
 
