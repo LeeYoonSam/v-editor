@@ -1,8 +1,7 @@
 package com.example.veditor.feature.editor
 
-import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.LruCache
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -83,20 +82,13 @@ import com.example.veditor.core.model.TimeMs
 import com.example.veditor.core.model.TimeRange
 import com.example.veditor.core.model.Timeline
 import com.example.veditor.core.model.VideoClip
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-// 간단한 메모리 썸네일 캐시 (바이트 수 기준)
-private object ThumbMemoryCache {
-    private val lru = object : LruCache<String, Bitmap>(8 * 1024 * 1024) { // 8MB
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
-    }
-    fun get(key: String): Bitmap? = lru.get(key)
-    fun put(key: String, value: Bitmap) { lru.put(key, value) }
-}
 
 @Composable
 fun EditorUi(presenter: EditorPresenter) {
@@ -107,12 +99,12 @@ fun EditorUi(presenter: EditorPresenter) {
     LaunchedEffect(state.timeline?.clips?.map { it.sourceUri }) {
         val tl = state.timeline ?: return@LaunchedEffect
         if (tl.clips.isEmpty()) return@LaunchedEffect
-        val measured: List<Long> = withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val measured: List<Long> = withContext(Dispatchers.IO) {
             tl.clips.map { clip ->
-                val mmr = android.media.MediaMetadataRetriever()
+                val mmr = MediaMetadataRetriever()
                 try {
                     mmr.setDataSource(context, clip.sourceUri.toUri())
-                    val durMs = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                    val durMs = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
                     durMs ?: (clip.range.endMs.value - clip.range.startMs.value)
                 } finally {
                     mmr.release()
@@ -156,6 +148,9 @@ fun EditorUi(presenter: EditorPresenter) {
             presenter.setPlaying(false)
         },
         onDeleteSelectedOverlay = presenter::deleteSelectedOverlay,
+        onUpdateTrim = presenter::updateTrimSelection,
+        onCut = presenter::applyCutToTimeline,
+        onEnterTrimEdit = { presenter.setTrimEditing(true) },
     )
 }
 
@@ -176,6 +171,9 @@ private fun EditorContent(
     onSeek: (Long) -> Unit = {},
     onPlaybackTick: (Long) -> Unit = {},
     onPlaybackComplete: () -> Unit = {},
+    onUpdateTrim: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit,
+    onCut: () -> Unit,
+    onEnterTrimEdit: () -> Unit,
 ) {
     Scaffold(
         topBar = { EditorTopBar() },
@@ -219,8 +217,16 @@ private fun EditorContent(
                     },
                     timeline = state.timeline,
                     currentPositionMs = state.currentPositionMs,
+                    trimStartMs = state.trimStartMs,
+                    trimEndMs = state.trimEndMs,
+                    viewportStartMs = state.viewportStartMs,
+                    viewportEndMs = state.viewportEndMs,
+                    isTrimEditing = state.isTrimEditing,
                     onSeek = onSeek,
                     onScrubStart = { onPlayPause(false) },
+                    onUpdateTrim = onUpdateTrim,
+                    onCut = onCut,
+                    onEnterTrimEdit = onEnterTrimEdit,
                 )
             }
         }
@@ -472,7 +478,7 @@ private fun PreviewArea(
                     val posX = d.x * boxWidthPx
                     val posY = d.y * boxHeightPx
                     Text(
-                        text = if (d.text.isBlank()) "Aa" else d.text,
+                        text = d.text.ifBlank { "Aa" },
                         color = Color((d.colorArgb and 0xFFFFFFFF).toInt()),
                         modifier = Modifier
                             .padding(0.dp)
@@ -549,8 +555,16 @@ private fun TransportStrip(
     onToggle: () -> Unit,
     timeline: Timeline?,
     currentPositionMs: Long,
+    trimStartMs: Long,
+    trimEndMs: Long,
+    viewportStartMs: Long,
+    viewportEndMs: Long,
+    isTrimEditing: Boolean,
     onSeek: (Long) -> Unit,
     onScrubStart: () -> Unit,
+    onUpdateTrim: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit,
+    onCut: () -> Unit,
+    onEnterTrimEdit: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -586,153 +600,47 @@ private fun TransportStrip(
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
-            TimelineThumbnailsBar(
+            TimelineStrip(
                 timeline = timeline,
                 currentPositionMs = currentPositionMs,
+                trimStartMs = trimStartMs,
+                trimEndMs = trimEndMs,
+                viewportStartMs = viewportStartMs,
+                viewportEndMs = viewportEndMs,
+                isEditing = isTrimEditing,
                 onSeek = onSeek,
                 onScrubStart = onScrubStart,
+                onUpdateTrim = onUpdateTrim,
+                onEnterTrimEdit = onEnterTrimEdit,
             )
         }
+        // Divider
+        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.6f)))
+        // Right action area (Cut)
+        val hasValidSelection = trimEndMs > trimStartMs
+        if (isTrimEditing && hasValidSelection) {
+            Box(
+                modifier = Modifier
+                    .width(64.dp)
+                    .fillMaxHeight()
+                    .background(Color(0xFFBDBDBD))
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "자르기",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .background(Color.Transparent)
+                        .clickable { onCut() },
+                )
+            }
+        }
     }
 }
 
-@Composable
-private fun TimelineThumbnailsBar(
-    timeline: Timeline?,
-    currentPositionMs: Long,
-    onSeek: (Long) -> Unit,
-    onScrubStart: () -> Unit = {},
-) {
-    if (timeline == null) return
-    val totalMs = timeline.clips.last().range.endMs.value
-    val density = LocalDensity.current
-    val context = LocalContext.current
-    var stripWidthPx by remember { mutableIntStateOf(0) }
-    val sidePaddingDp = 10.dp
-    val sidePaddingPx = with(density) { sidePaddingDp.toPx() }
-
-    val videoUri = timeline.clips.first().sourceUri
-    // Precompute frames once per (uri, width, duration)
-    var thumbs by remember(videoUri, stripWidthPx, totalMs) { mutableStateOf<List<androidx.compose.ui.graphics.ImageBitmap>>(emptyList()) }
-    // 프레임 추출 중 과도한 CPU 사용을 피하기 위한 가드
-    var generating by remember(videoUri, stripWidthPx, totalMs) { mutableStateOf(false) }
-    LaunchedEffect(videoUri, totalMs, stripWidthPx) {
-        if (stripWidthPx <= 0 || generating) return@LaunchedEffect
-        generating = true
-        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
-        val totalSec = (totalMs / 1000f).coerceAtLeast(1f)
-        // 최종 프레임 수와 목표 폭을 명시적으로 계산: 초당 1프레임 기준
-        val finalFrameCount = ceil(totalSec).toInt().coerceAtLeast(1)
-        val finalThumbWidthPx = (effectivePx / finalFrameCount).coerceAtLeast(1f)
-
-        suspend fun extractFrames(frameCount: Int, option: Int, scaleW: Int): List<androidx.compose.ui.graphics.ImageBitmap> =
-            withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val mmr = android.media.MediaMetadataRetriever()
-                try {
-                    mmr.setDataSource(context, videoUri.toUri())
-                    val msPerFrame = totalMs.toFloat() / frameCount
-                    val list = ArrayList<androidx.compose.ui.graphics.ImageBitmap>(frameCount)
-                    for (idx in 0 until frameCount) {
-                        val tsMs = (idx * msPerFrame)
-                        val tsUs = (tsMs * 1000L).toLong().coerceIn(0L, totalMs * 1000L - 1_000L)
-                        val key = "${videoUri}|${totalMs}|${scaleW}|${tsUs}"
-                        val cached = ThumbMemoryCache.get(key)
-                        if (cached != null) {
-                            list.add(cached.asImageBitmap())
-                            continue
-                        }
-                        val raw = mmr.getFrameAtTime(tsUs, option) ?: continue
-                        val targetH = (48f * scaleW / finalThumbWidthPx).roundToInt().coerceAtLeast(24)
-                        val scaled = if (raw.width > scaleW) raw.scale(scaleW, targetH) else raw
-                        ThumbMemoryCache.put(key, scaled)
-                        list.add(scaled.asImageBitmap())
-                    }
-                    list
-                } finally {
-                    mmr.release()
-                }
-            }
-
-        // 1차: 최종 썸네일 폭의 1/4 크기로 빠른 표시
-        val fastScaleW = (finalThumbWidthPx / 4f).roundToInt().coerceAtLeast(16)
-        val fast = extractFrames(finalFrameCount, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC, fastScaleW)
-        withContext(kotlinx.coroutines.Dispatchers.Main) {
-            thumbs = fast
-        }
-
-        // 2차: 최종 폭으로 정밀 교체
-        val preciseScaleW = finalThumbWidthPx.roundToInt().coerceAtLeast(fastScaleW)
-        val precise = extractFrames(finalFrameCount, android.media.MediaMetadataRetriever.OPTION_CLOSEST, preciseScaleW)
-        withContext(kotlinx.coroutines.Dispatchers.Main) {
-            if (precise.isNotEmpty()) thumbs = precise
-        }
-
-        generating = false
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onSizeChanged { stripWidthPx = it.width },
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = sidePaddingDp)) {
-            if (thumbs.isEmpty()) {
-                val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
-                val totalSec = (totalMs / 1000f).coerceAtLeast(1f)
-                val frameCount = ceil(totalSec).toInt().coerceAtLeast(1)
-                val placeholders = frameCount
-                repeat(placeholders) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .background(Color.DarkGray.copy(alpha = 0.3f)),
-                    )
-                }
-            } else {
-                thumbs.forEach { img ->
-                    Image(
-                        bitmap = img,
-                        contentDescription = null,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    )
-                }
-            }
-        }
-        // Seek by tap/drag within the strip (no scroll)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .pointerInput(totalMs, stripWidthPx) {
-                    detectDragGestures(
-                        onDragStart = { onScrubStart() },
-                        onDragEnd = {
-                            // 드래그 종료 후에도 비디오가 끝나있지 않다면 그대로 유지
-                        },
-                        onDrag = { change, _ ->
-                            change.consume()
-                            val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
-                            val x = (change.position.x - sidePaddingPx).coerceIn(0f, effectivePx)
-                            val raw = ((x / effectivePx) * totalMs).toLong()
-                            onSeek(raw)
-                        },
-                    )
-                },
-        )
-        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
-        val playheadPx = sidePaddingPx + ((currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f)) * effectivePx
-        Box(
-            modifier = Modifier
-                .padding(start = with(density) { playheadPx.toDp() })
-                .width(6.dp)
-                .height(52.dp)
-                .background(Color.White)
-                .zIndex(1f),
-        )
-    }
-}
+@Suppress("UNUSED_PARAMETER")
 
 @Composable
 private fun StickerAssetGrid(onSelect: (assetId: String) -> Unit) {
@@ -782,5 +690,15 @@ private fun EditorPreview_Timeline() {
         onUpdateSticker = { _, _, _, _, _ -> },
         onUpdateSubtitle = { _ -> },
         onUpdateMusic = { _, _ -> },
+        onUpdateSubtitleStyle = TODO(),
+        onUpdateSubtitlePosition = TODO(),
+        onDeleteSelectedOverlay = TODO(),
+        onPlayPause = TODO(),
+        onSeek = TODO(),
+        onPlaybackTick = TODO(),
+        onPlaybackComplete = TODO(),
+        onUpdateTrim = TODO(),
+        onCut = TODO(),
+        onEnterTrimEdit = {},
     )
 }

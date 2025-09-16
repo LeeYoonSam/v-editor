@@ -27,6 +27,10 @@ data class EditorState(
     val zoomDpPerMs: Float = 0.3f,
     val trimStartMs: Long = 0L,
     val trimEndMs: Long = 0L,
+    // 컷 적용 후 썸네일/스크러빙에 사용되는 뷰포트 범위(초기값: 전체 타임라인)
+    val viewportStartMs: Long = 0L,
+    val viewportEndMs: Long = 0L,
+    val isTrimEditing: Boolean = false,
 )
 
 class EditorPresenter(
@@ -39,6 +43,9 @@ class EditorPresenter(
             timeline = initialTimeline,
             trimStartMs = 0L,
             trimEndMs = initialTimeline?.clips?.lastOrNull()?.range?.endMs?.value ?: 0L,
+            viewportStartMs = 0L,
+            viewportEndMs = initialTimeline?.clips?.lastOrNull()?.range?.endMs?.value ?: 0L,
+            isTrimEditing = false,
         ),
     )
     val state: StateFlow<EditorState> = _state.asStateFlow()
@@ -115,7 +122,83 @@ class EditorPresenter(
             timeline = timeline,
             trimStartMs = 0L,
             trimEndMs = timeline.clips.lastOrNull()?.range?.endMs?.value ?: 0L,
+            viewportStartMs = 0L,
+            viewportEndMs = timeline.clips.lastOrNull()?.range?.endMs?.value ?: 0L,
+            isTrimEditing = false,
         )
+    }
+
+    fun setTrimEditing(editing: Boolean) {
+        _state.value = _state.value.copy(isTrimEditing = editing)
+    }
+
+    // 트림 선택 범위 업데이트: 좌/우 핸들 드래그 또는 내부 드래그로 이동
+    fun updateTrimSelection(startMs: Long? = null, endMs: Long? = null, moveByMs: Long? = null) {
+        val tlEnd = _state.value.timeline?.clips?.lastOrNull()?.range?.endMs?.value ?: return
+        var s = _state.value.trimStartMs
+        var e = _state.value.trimEndMs
+        if (moveByMs != null) {
+            val length = (e - s).coerceAtLeast(1L)
+            val ns = (s + moveByMs).coerceIn(0L, tlEnd - length)
+            s = ns
+            e = ns + length
+        }
+        if (startMs != null) s = startMs.coerceIn(0L, e - 1)
+        if (endMs != null) e = endMs.coerceIn(s + 1, tlEnd)
+        _state.value = _state.value.copy(trimStartMs = s, trimEndMs = e)
+    }
+
+    // 컷 버튼: 선택 범위를 기반으로 타임라인을 해당 구간으로 트림하고 뷰포트 갱신
+    fun applyCutToTimeline() {
+        val current = _state.value
+        val tl = current.timeline ?: return
+        val s = current.trimStartMs
+        val e = current.trimEndMs
+        if (e <= s) return
+        if (tl.clips.isEmpty()) return
+        // 선택 구간을 완전히 포함하는 단일 클립을 찾는다.
+        val idx = tl.clips.indexOfFirst { clip ->
+            val cs = clip.range.startMs.value
+            val ce = clip.range.endMs.value
+            s >= cs && e <= ce
+        }
+        if (idx >= 0) {
+            // 단일 클립 내부 트림 + 소스 교체(선택 구간만 남기는 새로운 타임라인)
+            val target = tl.clips[idx]
+            val newClip = target.copy(
+                range = TimeRange(TimeMs(0), TimeMs(e - s)),
+            )
+            // 선택 범위와 겹치는 오버레이만 남기고, 시작 기준을 0으로 이동
+            val keptOverlays = tl.overlays.mapNotNull { o ->
+                val os = o.timeRange.startMs.value
+                val oe = o.timeRange.endMs.value
+                val isectStart = maxOf(s, os)
+                val isectEnd = minOf(e, oe)
+                if (isectEnd <= isectStart) return@mapNotNull null
+                val shifted = TimeRange(TimeMs(isectStart - s), TimeMs(isectEnd - s))
+                when (o) {
+                    is Overlay.Sticker -> o.copy(timeRange = shifted)
+                    is Overlay.Subtitle -> o.copy(timeRange = shifted)
+                    is Overlay.Music -> o.copy(timeRange = shifted)
+                }
+            }
+            val newTimeline = Timeline(clips = listOf(newClip), overlays = keptOverlays)
+            setTimeline(newTimeline)
+            _state.value = _state.value.copy(
+                currentPositionMs = 0L,
+                viewportStartMs = 0L,
+                viewportEndMs = newClip.range.endMs.value,
+                isTrimEditing = false,
+            )
+        } else {
+            // 여러 클립에 걸친 선택: 타임라인은 보존하고 뷰포트만 설정
+            _state.value = _state.value.copy(
+                currentPositionMs = s,
+                viewportStartMs = s,
+                viewportEndMs = e,
+                isTrimEditing = false,
+            )
+        }
     }
 
     fun updateStickerDraft(
