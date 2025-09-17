@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,11 +25,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import com.example.veditor.core.model.Timeline
+import com.example.veditor.R
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -46,6 +49,7 @@ fun TimelineStrip(
     onScrubStart: () -> Unit = {},
     onUpdateTrim: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit,
     onEnterTrimEdit: () -> Unit,
+    onUpdateViewport: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit = { _, _, _ -> },
 ) {
     if (timeline == null) return
     val totalMs = timeline.clips.last().range.endMs.value
@@ -148,6 +152,76 @@ fun TimelineStrip(
                     )
                 }
             }
+        }
+
+        // Side arrows overlay (acts as viewport drag handles)
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = sidePaddingDp)
+                .width(28.dp)
+                .height(48.dp)
+                .zIndex(2.2f)
+                .pointerInput(viewportStartMs, viewportEndMs, stripWidthPx, displayTotalMs) {
+                    var accumMs = 0f
+                    detectDragGestures { change, drag ->
+                        change.consume()
+                        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
+                        val deltaMs = (drag.x / effectivePx) * displayTotalMs
+                        accumMs += deltaMs
+                        val msPerPixelViewport = (displayTotalMs / effectivePx).coerceAtLeast(1f)
+                        val emitThresholdMs = (msPerPixelViewport * 2f).coerceAtLeast(5f)
+                        if (kotlin.math.abs(accumMs) >= emitThresholdMs) {
+                            val step = accumMs.toLong()
+                            accumMs -= step.toFloat()
+                            val newStart = (viewportStartMs + step).coerceAtLeast(0L)
+                            onUpdateViewport(newStart, null, null)
+                        }
+                        onEnterTrimEdit()
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_arrow_left),
+                contentDescription = "왼쪽",
+                modifier = Modifier.width(20.dp).height(20.dp),
+                contentScale = ContentScale.Fit,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = sidePaddingDp)
+                .width(28.dp)
+                .height(48.dp)
+                .zIndex(2.2f)
+                .pointerInput(viewportStartMs, viewportEndMs, stripWidthPx, displayTotalMs) {
+                    var accumMs = 0f
+                    detectDragGestures { change, drag ->
+                        change.consume()
+                        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
+                        val deltaMs = (drag.x / effectivePx) * displayTotalMs
+                        accumMs += deltaMs
+                        val msPerPixelViewport = (displayTotalMs / effectivePx).coerceAtLeast(1f)
+                        val emitThresholdMs = (msPerPixelViewport * 2f).coerceAtLeast(5f)
+                        if (kotlin.math.abs(accumMs) >= emitThresholdMs) {
+                            val step = accumMs.toLong()
+                            accumMs -= step.toFloat()
+                            val newEnd = (viewportEndMs + step)
+                            onUpdateViewport(null, newEnd, null)
+                        }
+                        onEnterTrimEdit()
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_arrow_right),
+                contentDescription = "오른쪽",
+                modifier = Modifier.width(20.dp).height(20.dp),
+                contentScale = ContentScale.Fit,
+            )
         }
 
         // Scrub layer

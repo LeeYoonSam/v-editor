@@ -102,8 +102,12 @@ class EditorPresenter(
 
     fun seekTo(positionMs: Long) {
         val tl = _state.value.timeline ?: return
-        val end = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
-        val clamped = positionMs.coerceIn(0L, end)
+        val fullEnd = tl.clips.lastOrNull()?.range?.endMs?.value ?: return
+        val vpStart = _state.value.viewportStartMs
+        val vpEnd = _state.value.viewportEndMs.takeIf { it > 0L } ?: fullEnd
+        val effectiveStart = vpStart.coerceAtLeast(0L)
+        val effectiveEnd = vpEnd.coerceIn(effectiveStart, fullEnd)
+        val clamped = positionMs.coerceIn(effectiveStart, effectiveEnd)
         _state.value = _state.value.copy(currentPositionMs = clamped)
     }
 
@@ -130,6 +134,30 @@ class EditorPresenter(
 
     fun setTrimEditing(editing: Boolean) {
         _state.value = _state.value.copy(isTrimEditing = editing)
+    }
+
+    // 뷰포트 범위 업데이트(편집 모드 재생 범위)
+    fun updateViewportRange(startMs: Long? = null, endMs: Long? = null, moveByMs: Long? = null) {
+        val tlEnd = _state.value.timeline?.clips?.lastOrNull()?.range?.endMs?.value ?: return
+        var vs = _state.value.viewportStartMs
+        var ve = _state.value.viewportEndMs.takeIf { it > 0L } ?: tlEnd
+        if (moveByMs != null) {
+            val length = (ve - vs).coerceAtLeast(100L)
+            val nvs = (vs + moveByMs).coerceIn(0L, tlEnd - length)
+            vs = nvs
+            ve = nvs + length
+        }
+        if (startMs != null) vs = startMs.coerceIn(0L, ve - 100L)
+        if (endMs != null) ve = endMs.coerceIn(vs + 100L, tlEnd)
+
+        // 뷰포트가 바뀌면, 현재 위치가 벗어나지 않도록 보정
+        val cur = _state.value.currentPositionMs
+        val clampedCur = cur.coerceIn(vs, ve)
+        _state.value = _state.value.copy(
+            viewportStartMs = vs,
+            viewportEndMs = ve,
+            currentPositionMs = clampedCur,
+        )
     }
 
     // 트림 선택 범위 업데이트: 좌/우 핸들 드래그 또는 내부 드래그로 이동

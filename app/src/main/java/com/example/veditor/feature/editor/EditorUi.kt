@@ -149,6 +149,7 @@ fun EditorUi(presenter: EditorPresenter) {
         },
         onDeleteSelectedOverlay = presenter::deleteSelectedOverlay,
         onUpdateTrim = presenter::updateTrimSelection,
+        onUpdateViewport = presenter::updateViewportRange,
         onCut = presenter::applyCutToTimeline,
         onEnterTrimEdit = { presenter.setTrimEditing(true) },
     )
@@ -172,6 +173,7 @@ private fun EditorContent(
     onPlaybackTick: (Long) -> Unit = {},
     onPlaybackComplete: () -> Unit = {},
     onUpdateTrim: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit,
+    onUpdateViewport: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit = { _, _, _ -> },
     onCut: () -> Unit,
     onEnterTrimEdit: () -> Unit,
 ) {
@@ -201,6 +203,8 @@ private fun EditorContent(
                     overlayDraft = state.overlayDraft,
                     isPlaying = state.isPlaying,
                     currentPositionMs = state.currentPositionMs,
+                    viewportStartMs = state.viewportStartMs,
+                    viewportEndMs = state.viewportEndMs,
                     onPlaybackTick = onPlaybackTick,
                     onPlaybackComplete = onPlaybackComplete,
                     onDragSticker = { x, y -> onUpdateSticker(null, x, y, null, null) },
@@ -209,9 +213,11 @@ private fun EditorContent(
                 TransportStrip(
                     isPlaying = state.isPlaying,
                     onToggle = {
-                        val end = state.timeline.clips.last().range.endMs.value
-                        if (!state.isPlaying && state.currentPositionMs >= end) {
-                            onSeek(0L)
+                        val clipEnd = state.timeline.clips.last().range.endMs.value
+                        val playStart = if (state.viewportEndMs > state.viewportStartMs) state.viewportStartMs else 0L
+                        val playEnd = if (state.viewportEndMs > state.viewportStartMs) state.viewportEndMs else clipEnd
+                        if (!state.isPlaying && state.currentPositionMs >= playEnd) {
+                            onSeek(playStart)
                         }
                         onPlayPause(!state.isPlaying)
                     },
@@ -225,6 +231,7 @@ private fun EditorContent(
                     onSeek = onSeek,
                     onScrubStart = { onPlayPause(false) },
                     onUpdateTrim = onUpdateTrim,
+                    onUpdateViewport = onUpdateViewport,
                     onCut = onCut,
                     onEnterTrimEdit = onEnterTrimEdit,
                 )
@@ -381,6 +388,8 @@ private fun PreviewArea(
     overlayDraft: OverlayDraft?,
     isPlaying: Boolean,
     currentPositionMs: Long,
+    viewportStartMs: Long = 0L,
+    viewportEndMs: Long = 0L,
     onPlaybackTick: (Long) -> Unit,
     onPlaybackComplete: () -> Unit = {},
     onDragSticker: (x: Float, y: Float) -> Unit,
@@ -425,12 +434,18 @@ private fun PreviewArea(
                     player.seekTo(currentPositionMs)
                 }
             }
-            LaunchedEffect(isPlaying) {
+            LaunchedEffect(isPlaying, viewportStartMs, viewportEndMs) {
                 while (isPlaying) {
                     val pos = player.currentPosition
-                    onPlaybackTick(pos)
-                    val total = (player.duration.takeIf { it > 0 } ?: timeline.clips.last().range.endMs.value).toLong()
-                    if (pos >= total) {
+                    val clipEnd = timeline.clips.last().range.endMs.value.toLong()
+                    val playStart = if (viewportEndMs > viewportStartMs) viewportStartMs else 0L
+                    val playEnd = if (viewportEndMs > viewportStartMs) viewportEndMs else clipEnd
+                    val clamped = pos.coerceIn(playStart, playEnd)
+                    if (clamped != pos) {
+                        player.seekTo(clamped)
+                    }
+                    onPlaybackTick(clamped)
+                    if (clamped >= playEnd) {
                         onPlaybackComplete()
                         break
                     }
@@ -563,6 +578,7 @@ private fun TransportStrip(
     onSeek: (Long) -> Unit,
     onScrubStart: () -> Unit,
     onUpdateTrim: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit,
+    onUpdateViewport: (startMs: Long?, endMs: Long?, moveByMs: Long?) -> Unit = { _, _, _ -> },
     onCut: () -> Unit,
     onEnterTrimEdit: () -> Unit,
 ) {
@@ -612,6 +628,7 @@ private fun TransportStrip(
                 onScrubStart = onScrubStart,
                 onUpdateTrim = onUpdateTrim,
                 onEnterTrimEdit = onEnterTrimEdit,
+                onUpdateViewport = onUpdateViewport,
             )
         }
         // Divider
