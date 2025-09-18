@@ -154,76 +154,6 @@ fun TimelineStrip(
             }
         }
 
-        // Side arrows overlay (acts as viewport drag handles)
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = sidePaddingDp)
-                .width(28.dp)
-                .height(48.dp)
-                .zIndex(2.2f)
-                .pointerInput(viewportStartMs, viewportEndMs, stripWidthPx, displayTotalMs) {
-                    var accumMs = 0f
-                    detectDragGestures { change, drag ->
-                        change.consume()
-                        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
-                        val deltaMs = (drag.x / effectivePx) * displayTotalMs
-                        accumMs += deltaMs
-                        val msPerPixelViewport = (displayTotalMs / effectivePx).coerceAtLeast(1f)
-                        val emitThresholdMs = (msPerPixelViewport * 2f).coerceAtLeast(5f)
-                        if (kotlin.math.abs(accumMs) >= emitThresholdMs) {
-                            val step = accumMs.toLong()
-                            accumMs -= step.toFloat()
-                            val newStart = (viewportStartMs + step).coerceAtLeast(0L)
-                            onUpdateViewport(newStart, null, null)
-                        }
-                        onEnterTrimEdit()
-                    }
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_arrow_left),
-                contentDescription = "왼쪽",
-                modifier = Modifier.width(20.dp).height(20.dp),
-                contentScale = ContentScale.Fit,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = sidePaddingDp)
-                .width(28.dp)
-                .height(48.dp)
-                .zIndex(2.2f)
-                .pointerInput(viewportStartMs, viewportEndMs, stripWidthPx, displayTotalMs) {
-                    var accumMs = 0f
-                    detectDragGestures { change, drag ->
-                        change.consume()
-                        val effectivePx = (stripWidthPx - (sidePaddingPx * 2)).coerceAtLeast(1f)
-                        val deltaMs = (drag.x / effectivePx) * displayTotalMs
-                        accumMs += deltaMs
-                        val msPerPixelViewport = (displayTotalMs / effectivePx).coerceAtLeast(1f)
-                        val emitThresholdMs = (msPerPixelViewport * 2f).coerceAtLeast(5f)
-                        if (kotlin.math.abs(accumMs) >= emitThresholdMs) {
-                            val step = accumMs.toLong()
-                            accumMs -= step.toFloat()
-                            val newEnd = (viewportEndMs + step)
-                            onUpdateViewport(null, newEnd, null)
-                        }
-                        onEnterTrimEdit()
-                    }
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_arrow_right),
-                contentDescription = "오른쪽",
-                modifier = Modifier.width(20.dp).height(20.dp),
-                contentScale = ContentScale.Fit,
-            )
-        }
-
         // Scrub layer
         Box(
             modifier = Modifier
@@ -293,6 +223,15 @@ fun TimelineStrip(
                 )
             }
         }
+        // selection fill (light accent background)
+        Box(
+            modifier = Modifier
+                .padding(start = with(density) { selStartPx.toDp() })
+                .width(with(density) { selWidthPx.toDp() })
+                .height(48.dp)
+                .background(Color(0xFFFFD54F).copy(alpha = 0.18f))
+                .zIndex(1.8f),
+        )
         // selection box
         var wholeAccumMs by remember(displayTotalMs, stripWidthPx, trimStartMs, trimEndMs) { mutableStateOf(0f) }
         val msPerPixelViewport = (displayTotalMs / effectivePx).coerceAtLeast(1f)
@@ -375,7 +314,15 @@ fun TimelineStrip(
                         onEnterTrimEdit()
                     }
                 },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_arrow_left),
+                contentDescription = "트림 시작 조절",
+                modifier = Modifier.width(18.dp).height(18.dp),
+                contentScale = ContentScale.Fit,
+            )
+        }
         // Right handle
         var rightAccumMs by remember(displayTotalMs, stripWidthPx, trimEndMs) { mutableStateOf(0f) }
         Box(
@@ -398,7 +345,15 @@ fun TimelineStrip(
                         onEnterTrimEdit()
                     }
                 },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_arrow_right),
+                contentDescription = "트림 끝 조절",
+                modifier = Modifier.width(18.dp).height(18.dp),
+                contentScale = ContentScale.Fit,
+            )
+        }
     }
 }
 
